@@ -1,0 +1,873 @@
+{
+  "name": "E-commerce AI — Master Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ecommerce/events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "341420b6-5529-4bb3-9aaa-55e2dd6f3225",
+      "name": "Webhook — Ecommerce Events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        304
+      ],
+      "webhookId": "ecommerce-events-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst now = new Date().toISOString();\n\nconst normalized = {\n  eventType: body.eventType || body.event_type || body.type || 'unknown',\n  timestamp: body.timestamp || now,\n  storeId: body.storeId || body.shop_id || body.shop || 'default_store',\n  customerId: body.customerId || body.customer_id || (body.customer && body.customer.id) || null,\n  orderId: body.orderId || body.order_id || (body.order && body.order.id) || null,\n  productId: body.productId || body.product_id || (body.product && body.product.id) || null,\n  cartId: body.cartId || body.cart_id || body.checkout_id || null,\n  payload: body.payload || body,\n  raw: body\n};\n\nreturn [{ json: normalized }];"
+      },
+      "id": "d3817b91-6614-4275-86cc-8db1863e353f",
+      "name": "Normalize Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json;\nconst et = (event.eventType || '').toLowerCase();\n\n// Basic deterministic pre-routing hints + context keys needed\nconst contextNeeds = {\n  abandoned_checkout: ['customer', 'cart', 'products', 'inventory', 'discount_history', 'previous_orders'],\n  order_created: ['customer', 'order', 'products'],\n  order_delayed: ['customer', 'order', 'tracking', 'order_value', 'history'],\n  fulfillment_exception: ['customer', 'order', 'tracking', 'order_value', 'history'],\n  return_requested: ['customer', 'order', 'product', 'return_history', 'reason'],\n  inventory_low: ['product', 'inventory', 'sales_velocity', 'supplier'],\n  customer_inactive: ['customer', 'last_order', 'order_frequency', 'favorites', 'aov'],\n  customer_message: ['customer', 'message', 'history', 'products', 'inventory'],\n  review_received: ['customer', 'order', 'product', 'review']\n};\n\nreturn [{\n  json: {\n    ...event,\n    contextNeeds: contextNeeds[et] || ['customer', 'order'],\n    preRouteHint: et\n  }\n}];"
+      },
+      "id": "85e5fd71-76cf-43d5-8494-5d64aef878e7",
+      "name": "Plan Context Collection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Context Collector (MVP — uses payload data + placeholders for Shopify HTTP)\n// In production, replace placeholders with real HTTP Request nodes using SHOPIFY_ADMIN_API credential\nconst item = $input.first().json;\nconst p = item.payload || {};\nconst event = item;\n\n// Simulate / extract context from incoming payload (works with test data)\nconst context = {\n  customer: p.customer || (event.customerId ? { id: event.customerId, name: p.customerName || 'Customer', email: p.email || null, previousOrders: p.previousOrders || 0, lifetimeValue: p.ltv || 0 } : null),\n  cart: p.cart || (event.cartId ? { id: event.cartId, value: p.cartValue || p.total_price || 0, items: p.items || [] } : null),\n  order: p.order || (event.orderId ? { id: event.orderId, value: p.orderValue || p.total_price || 0, status: p.status || 'unknown', createdAt: p.created_at || null } : null),\n  product: p.product || (event.productId ? { id: event.productId, name: p.productName || 'Product', inventory: p.inventory || p.inventory_quantity || null } : null),\n  inventory: p.inventory !== undefined ? { quantity: p.inventory, salesLast24h: p.salesLast24h || 0 } : null,\n  tracking: p.tracking || p.fulfillment || null,\n  returnReason: p.reason || p.return_reason || null,\n  message: p.message || p.body || p.text || null,\n  discountHistory: p.discountHistory || [],\n  previousInteractions: p.previousInteractions || [],\n  salesVelocity: p.salesLast24h || p.sales_velocity || 0\n};\n\nreturn [{\n  json: {\n    event: {\n      eventType: event.eventType,\n      timestamp: event.timestamp,\n      storeId: event.storeId,\n      customerId: event.customerId,\n      orderId: event.orderId,\n      productId: event.productId,\n      cartId: event.cartId\n    },\n    context,\n    rawPayload: p\n  }\n}];"
+      },
+      "id": "fe031ebf-fc00-4736-903d-0ad26c7df7bb",
+      "name": "Collect Context (Shopify-ready)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Master AI Router for an E-commerce AI Operating System.\nYou ONLY classify the event and choose ONE specialized agent. Never invent data.\n\nAllowed agents (exactly one):\n- revenue_recovery\n- customer_intent\n- delivery_exception\n- inventory_rescue\n- returns_intelligence\n- winback\n\nEvent:\n{{ JSON.stringify($json.event) }}\n\nContext summary:\n{{ JSON.stringify($json.context) }}\n\nReturn STRICT JSON only (no markdown, no explanation):\n{\n  \"agent\": \"one_of_allowed\",\n  \"priority\": \"low|medium|high|critical\",\n  \"reason\": \"short explanation\",\n  \"confidence\": 0.0-1.0\n}\n\nRouting rules:\n- abandoned_checkout → revenue_recovery\n- customer_message → customer_intent\n- order_delayed OR fulfillment_exception → delivery_exception\n- inventory_low → inventory_rescue\n- return_requested → returns_intelligence\n- customer_inactive → winback\n- Anything else or low confidence → choose the closest safe agent or set agent to \"unsupported\""
+      },
+      "id": "8f816493-b05d-434d-9096-c2f1e02e7305",
+      "name": "AI Router (Classify)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -816,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = item.text || item.output || item.response || JSON.stringify(item);\n\n// Clean markdown fences if present\ntext = String(text).replace(/```json\\n?/gi, '').replace(/```\\n?/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  // Retry repair attempt would go here in full version; fallback\n  parsed = {\n    agent: 'unsupported',\n    priority: 'medium',\n    reason: 'AI output parse failed — fallback to human review',\n    confidence: 0.1\n  };\n}\n\nconst allowed = ['revenue_recovery','customer_intent','delivery_exception','inventory_rescue','returns_intelligence','winback'];\nif (!allowed.includes(parsed.agent)) {\n  parsed.agent = 'unsupported';\n  parsed.reason = (parsed.reason || '') + ' | Invalid agent name';\n}\n\nreturn [{\n  json: {\n    ...($('Collect Context (Shopify-ready)').first().json),\n    routing: parsed\n  }\n}];"
+      },
+      "id": "9d66adb3-8e44-466a-90c1-e0836a8a4ff5",
+      "name": "Parse & Validate AI Router Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "revenue_recovery",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "revenue_recovery"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "customer_intent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "customer_intent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "delivery_exception",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delivery_exception"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "inventory_rescue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "inventory_rescue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "returns_intelligence",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "returns_intelligence"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "winback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "winback"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "65f1177f-565e-47ce-870e-87cdf19fc676",
+      "name": "Route to Agent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -288,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "y72S4gkXjqeVxKRk",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/y72S4gkXjqeVxKRk",
+          "cachedResultName": "E-commerce AI — Revenue Recovery Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "8a190b09-800b-4fe1-938f-4863f7893826",
+      "name": "Execute Revenue Recovery Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "yNovfQK6ogHtOL4P",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/yNovfQK6ogHtOL4P",
+          "cachedResultName": "E-commerce AI — Customer Intent Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "bce4f9c9-edee-4492-b5ef-705dab4a5aa0",
+      "name": "Execute Customer Intent Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "OoYgG8M7c30pSG7r",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OoYgG8M7c30pSG7r",
+          "cachedResultName": "E-commerce AI — Delivery Exception Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "e649f63c-b2dc-48d1-8412-f80e4edc37c9",
+      "name": "Execute Delivery Exception Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "PoXujSUOWVI1rxmj",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/PoXujSUOWVI1rxmj",
+          "cachedResultName": "E-commerce AI — Inventory Rescue Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "155f99c9-b40f-406f-943b-c0ab3b6ebdb7",
+      "name": "Execute Inventory Rescue Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "gg3XarUYwfA5NooQ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/gg3XarUYwfA5NooQ",
+          "cachedResultName": "E-commerce AI — Returns Intelligence Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "7e71d9b2-5c47-4067-80fa-f26ecd15cf65",
+      "name": "Execute Returns Intelligence Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "5XezL0vuZhetcFTl",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5XezL0vuZhetcFTl",
+          "cachedResultName": "E-commerce AI — Win-Back Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "72334b95-d1b2-4c08-93b2-a668658db5a2",
+      "name": "Execute Win-Back Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentResult = $input.first().json;\nconst upstream = $('Parse & Validate AI Router Output').first().json;\n\nconst standardized = {\n  agent: agentResult.agent || upstream.routing?.agent || 'unknown',\n  decision: agentResult.decision || 'UNKNOWN',\n  action: agentResult.action || '',\n  confidence: agentResult.confidence || upstream.routing?.confidence || 0,\n  reason: agentResult.reason || upstream.routing?.reason || '',\n  customerId: agentResult.customerId || upstream.event?.customerId || '',\n  orderId: agentResult.orderId || upstream.event?.orderId || '',\n  status: agentResult.status || 'completed',\n  timestamp: new Date().toISOString(),\n  eventType: upstream.event?.eventType || '',\n  channel: agentResult.channel || '',\n  message: agentResult.message || '',\n  escalate: agentResult.escalate || false,\n  priority: agentResult.priority || upstream.routing?.priority || 'medium',\n  result: agentResult\n};\n\nreturn [{ json: standardized }];"
+      },
+      "id": "393cdc00-1b0e-4dc0-a2d1-e42d8bb7fce1",
+      "name": "Standardize Agent Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "10IcXo24FVIdifnsp2UAWTfhAHwKBrK-sxp4y1d7INtg",
+          "mode": "list",
+          "cachedResultName": "ecommerce-multi agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10IcXo24FVIdifnsp2UAWTfhAHwKBrK-sxp4y1d7INtg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10IcXo24FVIdifnsp2UAWTfhAHwKBrK-sxp4y1d7INtg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "agent": "={{ $json.agent }}",
+            "eventType": "={{ $json.eventType }}",
+            "customerId": "={{ $json.customerId }}",
+            "orderId": "={{ $json.orderId }}",
+            "decision": "={{ $json.decision }}",
+            "action": "={{ $json.action }}",
+            "confidence": "={{ $json.confidence }}",
+            "reason": "={{ $json.reason }}",
+            "status": "={{ $json.status }}",
+            "result": "={{ JSON.stringify($json.result) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "agent",
+              "displayName": "agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eventType",
+              "displayName": "eventType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customerId",
+              "displayName": "customerId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orderId",
+              "displayName": "orderId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "confidence",
+              "displayName": "confidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "result",
+              "displayName": "result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e59cb792-378f-4969-ac74-b62bb9f54fd8",
+      "name": "Log to Google Sheets — AI_AGENT_LOG",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PuhsrSnOv0NIFQN6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, agent: $json.agent, decision: $json.decision, status: $json.status, timestamp: $json.timestamp } }}",
+        "options": {}
+      },
+      "id": "d29b0f80-50a5-436e-ba0c-655089af880e",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const upstream = $input.first().json;\nreturn [{\n  json: {\n    agent: 'unsupported',\n    decision: 'HUMAN_REVIEW',\n    action: 'NO_ACTION',\n    confidence: 0,\n    reason: 'Event type not supported or routing failed',\n    customerId: upstream.event?.customerId || '',\n    orderId: upstream.event?.orderId || '',\n    status: 'unsupported',\n    timestamp: new Date().toISOString(),\n    eventType: upstream.event?.eventType || 'unknown',\n    escalate: true,\n    priority: 'medium'\n  }\n}];"
+      },
+      "id": "d8a270ff-7ddc-480e-9f11-2e7491fb7310",
+      "name": "Unsupported Event Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        416
+      ],
+      "id": "50f90ebb-a4f2-46f2-9e69-7344d69296ad",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "qJIY12H0ZCbL4Rl9",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook — Ecommerce Events": {
+      "main": [
+        [
+          {
+            "node": "Normalize Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Event": {
+      "main": [
+        [
+          {
+            "node": "Plan Context Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Context Collection": {
+      "main": [
+        [
+          {
+            "node": "Collect Context (Shopify-ready)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Context (Shopify-ready)": {
+      "main": [
+        [
+          {
+            "node": "AI Router (Classify)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Router (Classify)": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate AI Router Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate AI Router Output": {
+      "main": [
+        [
+          {
+            "node": "Route to Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Agent": {
+      "main": [
+        [
+          {
+            "node": "Execute Revenue Recovery Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Customer Intent Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Delivery Exception Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Inventory Rescue Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Returns Intelligence Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Win-Back Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unsupported Event Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Revenue Recovery Agent": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Customer Intent Agent": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Delivery Exception Agent": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Inventory Rescue Agent": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Returns Intelligence Agent": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Win-Back Agent": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unsupported Event Fallback": {
+      "main": [
+        [
+          {
+            "node": "Standardize Agent Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standardize Agent Result": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets — AI_AGENT_LOG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets — AI_AGENT_LOG": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Router (Classify)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "73a220b9-dbd6-4c2c-9835-d6f33d10916b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f9214f644faefcbd163a49527dd7da0582af489ef606043ead44f1cbc142237"
+  },
+  "nodeGroups": [],
+  "id": "Du5c3c8bdCZJ1LdQ",
+  "tags": []
+}

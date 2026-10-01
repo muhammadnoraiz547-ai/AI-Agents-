@@ -1,0 +1,322 @@
+{
+  "name": "E-commerce AI — Delivery Exception Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "b2dba61f-bf39-4fbb-acb3-3c5f68fac41b",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst event = input.event || input;\nconst context = input.context || {};\nconst order = context.order || {};\nconst customer = context.customer || {};\nconst tracking = context.tracking || {};\n\nconst actionKey = `delivery:${event.orderId || 'unknown'}:${event.eventType}`;\n\nreturn [{\n  json: {\n    event,\n    context,\n    order,\n    customer,\n    tracking,\n    orderValue: order.value || context.rawPayload?.orderValue || 0,\n    isVip: (customer.previousOrders || 0) >= 5 || (customer.lifetimeValue || 0) > 500,\n    actionKey\n  }\n}];"
+      },
+      "id": "8258afe9-357c-4852-b1c6-061788f5b8ad",
+      "name": "Prepare Delivery Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "4c0878c7-f940-45e8-95f2-640c3b452bbb",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -656,
+        352
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Delivery Exception Agent. Assess severity of order delay or fulfillment exception. Never invent tracking numbers, ETAs, or carrier status.\n\nEvent type: {{ $json.event.eventType }}\nOrder: {{ JSON.stringify($json.order) }}\nCustomer: {{ JSON.stringify($json.customer) }}\nTracking info (use only what is given): {{ JSON.stringify($json.tracking) }}\nOrder value: {{ $json.orderValue }}\nVIP flag: {{ $json.isVip }}\n\nSeverity levels: NORMAL | WATCH | HIGH | CRITICAL\n\nAllowed actions: NO_ACTION | PROACTIVE_EMAIL | PROACTIVE_SMS | SUPPORT_ALERT | HUMAN_ESCALATION\n\nRules:\n- VIP + high value + clear delay → PROACTIVE_EMAIL + SUPPORT_ALERT\n- Missing critical data → HUMAN_ESCALATION\n- Do not promise delivery dates not present in data.\n\nReturn STRICT JSON only:\n{\n  \"severity\": \"NORMAL|WATCH|HIGH|CRITICAL\",\n  \"decision\": \"action_name\",\n  \"reason\": \"...\",\n  \"confidence\": 0.0-1.0,\n  \"action\": \"...\",\n  \"channel\": \"email|sms|slack|none\",\n  \"message\": \"customer message or empty\",\n  \"escalate\": false,\n  \"priority\": \"low|medium|high|critical\"\n}"
+      },
+      "id": "39250b55-ee2a-4592-9435-6e836bd015fa",
+      "name": "AI Severity Evaluation",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -656,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = item.text || item.output || JSON.stringify(item);\ntext = String(text).replace(/```json\\n?/gi, '').replace(/```\\n?/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  parsed = {\n    severity: 'HIGH',\n    decision: 'HUMAN_ESCALATION',\n    reason: 'AI parse failed',\n    confidence: 0.1,\n    action: 'HUMAN_ESCALATION',\n    channel: 'slack',\n    message: '',\n    escalate: true,\n    priority: 'high'\n  };\n}\n\nconst upstream = $('Prepare Delivery Context').first().json;\nconst allowed = ['NO_ACTION','PROACTIVE_EMAIL','PROACTIVE_SMS','SUPPORT_ALERT','HUMAN_ESCALATION'];\nif (!allowed.includes(parsed.decision)) {\n  parsed.decision = 'HUMAN_ESCALATION';\n  parsed.escalate = true;\n}\n\nreturn [{\n  json: {\n    agent: 'delivery_exception',\n    decision: parsed.decision,\n    reason: parsed.reason || '',\n    confidence: Number(parsed.confidence) || 0,\n    action: parsed.action || parsed.decision,\n    channel: parsed.channel || 'email',\n    message: parsed.message || '',\n    escalate: !!parsed.escalate || ['HIGH','CRITICAL'].includes(parsed.severity),\n    priority: parsed.priority || parsed.severity?.toLowerCase() || 'medium',\n    severity: parsed.severity || 'WATCH',\n    customerId: upstream.event?.customerId || '',\n    orderId: upstream.event?.orderId || '',\n    status: 'decided',\n    actionKey: upstream.actionKey,\n    customerEmail: upstream.customer?.email || null,\n    customerName: upstream.customer?.name || 'Customer'\n  }\n}];"
+      },
+      "id": "43d44f37-3fc0-4279-8fee-1e52d85ad475",
+      "name": "Parse & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "NO_ACTION",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bca8dd85-5189-4c70-b1eb-b22c535af7fb",
+      "name": "Needs Action?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -176,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJGM6PZV5",
+          "mode": "list",
+          "cachedResultName": "social"
+        },
+        "text": "=🚨 *Delivery Exception Alert*\\nSeverity: {{ $json.severity }}\\nOrder: {{ $json.orderId }}\\nCustomer: {{ $json.customerId }}\\nDecision: {{ $json.decision }}\\nReason: {{ $json.reason }}\\nConfidence: {{ $json.confidence }}",
+        "otherOptions": {}
+      },
+      "id": "1f663666-69dd-4cb7-b0b4-4147c952c123",
+      "name": "Slack — Support Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        32
+      ],
+      "webhookId": "cf89290a-2f1e-4ccd-807a-bec1cd16f5a0",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "GnwIKg091OVlGxbb",
+          "name": "Slack account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.customerEmail }}",
+        "subject": "Update on your order {{ $json.orderId }}",
+        "emailType": "text",
+        "message": "={{ $json.message || 'We are monitoring your order and will update you shortly.' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "f0cfac33-3a82-4530-86c5-cd1f535ed641",
+      "name": "Gmail — Proactive Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        240
+      ],
+      "webhookId": "6f86bac8-7cde-4409-8351-db27453ed09f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BGEctCaelfNFbGXX",
+          "name": "Gmail account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{\n  json: {\n    ...d,\n    status: d.escalate ? 'escalated' : 'action_executed'\n  }\n}];"
+      },
+      "id": "ca37344c-48a7-4875-9677-e893747c4e0d",
+      "name": "Finalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{ json: { ...d, status: 'no_action', action: 'NO_ACTION' } }];"
+      },
+      "id": "0cc193c5-d86e-475e-a72f-1702fe38dbc6",
+      "name": "No Action Path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        384
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Delivery Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Delivery Context": {
+      "main": [
+        [
+          {
+            "node": "AI Severity Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Severity Evaluation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Severity Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate": {
+      "main": [
+        [
+          {
+            "node": "Needs Action?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Action?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Support Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Support Alert": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Proactive Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Proactive Email": {
+      "main": [
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Action Path": {
+      "main": [
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "135fb4a5-3541-4cc9-88b5-96a65179f7c0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f9214f644faefcbd163a49527dd7da0582af489ef606043ead44f1cbc142237"
+  },
+  "nodeGroups": [],
+  "id": "OoYgG8M7c30pSG7r",
+  "tags": []
+}

@@ -1,0 +1,463 @@
+{
+  "name": "E-commerce AI — Master Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ecommerce/events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-001",
+      "name": "Webhook — Ecommerce Events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "ecommerce-events-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst now = new Date().toISOString();\n\nconst normalized = {\n  eventType: body.eventType || body.event_type || body.type || 'unknown',\n  timestamp: body.timestamp || now,\n  storeId: body.storeId || body.shop_id || body.shop || 'default_store',\n  customerId: body.customerId || body.customer_id || (body.customer && body.customer.id) || null,\n  orderId: body.orderId || body.order_id || (body.order && body.order.id) || null,\n  productId: body.productId || body.product_id || (body.product && body.product.id) || null,\n  cartId: body.cartId || body.cart_id || body.checkout_id || null,\n  payload: body.payload || body,\n  raw: body\n};\n\nreturn [{ json: normalized }];"
+      },
+      "id": "normalize-001",
+      "name": "Normalize Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json;\nconst et = (event.eventType || '').toLowerCase();\n\n// Basic deterministic pre-routing hints + context keys needed\nconst contextNeeds = {\n  abandoned_checkout: ['customer', 'cart', 'products', 'inventory', 'discount_history', 'previous_orders'],\n  order_created: ['customer', 'order', 'products'],\n  order_delayed: ['customer', 'order', 'tracking', 'order_value', 'history'],\n  fulfillment_exception: ['customer', 'order', 'tracking', 'order_value', 'history'],\n  return_requested: ['customer', 'order', 'product', 'return_history', 'reason'],\n  inventory_low: ['product', 'inventory', 'sales_velocity', 'supplier'],\n  customer_inactive: ['customer', 'last_order', 'order_frequency', 'favorites', 'aov'],\n  customer_message: ['customer', 'message', 'history', 'products', 'inventory'],\n  review_received: ['customer', 'order', 'product', 'review']\n};\n\nreturn [{\n  json: {\n    ...event,\n    contextNeeds: contextNeeds[et] || ['customer', 'order'],\n    preRouteHint: et\n  }\n}];"
+      },
+      "id": "context-plan-001",
+      "name": "Plan Context Collection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Context Collector (MVP — uses payload data + placeholders for Shopify HTTP)\n// In production, replace placeholders with real HTTP Request nodes using SHOPIFY_ADMIN_API credential\nconst item = $input.first().json;\nconst p = item.payload || {};\nconst event = item;\n\n// Simulate / extract context from incoming payload (works with test data)\nconst context = {\n  customer: p.customer || (event.customerId ? { id: event.customerId, name: p.customerName || 'Customer', email: p.email || null, previousOrders: p.previousOrders || 0, lifetimeValue: p.ltv || 0 } : null),\n  cart: p.cart || (event.cartId ? { id: event.cartId, value: p.cartValue || p.total_price || 0, items: p.items || [] } : null),\n  order: p.order || (event.orderId ? { id: event.orderId, value: p.orderValue || p.total_price || 0, status: p.status || 'unknown', createdAt: p.created_at || null } : null),\n  product: p.product || (event.productId ? { id: event.productId, name: p.productName || 'Product', inventory: p.inventory || p.inventory_quantity || null } : null),\n  inventory: p.inventory !== undefined ? { quantity: p.inventory, salesLast24h: p.salesLast24h || 0 } : null,\n  tracking: p.tracking || p.fulfillment || null,\n  returnReason: p.reason || p.return_reason || null,\n  message: p.message || p.body || p.text || null,\n  discountHistory: p.discountHistory || [],\n  previousInteractions: p.previousInteractions || [],\n  salesVelocity: p.salesLast24h || p.sales_velocity || 0\n};\n\nreturn [{\n  json: {\n    event: {\n      eventType: event.eventType,\n      timestamp: event.timestamp,\n      storeId: event.storeId,\n      customerId: event.customerId,\n      orderId: event.orderId,\n      productId: event.productId,\n      cartId: event.cartId\n    },\n    context,\n    rawPayload: p\n  }\n}];"
+      },
+      "id": "collect-context-001",
+      "name": "Collect Context (Shopify-ready)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "openai-model-router",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [960, 480],
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL",
+          "name": "OPENAI_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Master AI Router for an E-commerce AI Operating System.\nYou ONLY classify the event and choose ONE specialized agent. Never invent data.\n\nAllowed agents (exactly one):\n- revenue_recovery\n- customer_intent\n- delivery_exception\n- inventory_rescue\n- returns_intelligence\n- winback\n\nEvent:\n{{ JSON.stringify($json.event) }}\n\nContext summary:\n{{ JSON.stringify($json.context) }}\n\nReturn STRICT JSON only (no markdown, no explanation):\n{\n  \"agent\": \"one_of_allowed\",\n  \"priority\": \"low|medium|high|critical\",\n  \"reason\": \"short explanation\",\n  \"confidence\": 0.0-1.0\n}\n\nRouting rules:\n- abandoned_checkout → revenue_recovery\n- customer_message → customer_intent\n- order_delayed OR fulfillment_exception → delivery_exception\n- inventory_low → inventory_rescue\n- return_requested → returns_intelligence\n- customer_inactive → winback\n- Anything else or low confidence → choose the closest safe agent or set agent to \"unsupported\"",
+        "options": {}
+      },
+      "id": "ai-router-chain",
+      "name": "AI Router (Classify)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = item.text || item.output || item.response || JSON.stringify(item);\n\n// Clean markdown fences if present\ntext = String(text).replace(/```json\\n?/gi, '').replace(/```\\n?/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  // Retry repair attempt would go here in full version; fallback\n  parsed = {\n    agent: 'unsupported',\n    priority: 'medium',\n    reason: 'AI output parse failed — fallback to human review',\n    confidence: 0.1\n  };\n}\n\nconst allowed = ['revenue_recovery','customer_intent','delivery_exception','inventory_rescue','returns_intelligence','winback'];\nif (!allowed.includes(parsed.agent)) {\n  parsed.agent = 'unsupported';\n  parsed.reason = (parsed.reason || '') + ' | Invalid agent name';\n}\n\nreturn [{\n  json: {\n    ...($('Collect Context (Shopify-ready)').first().json),\n    routing: parsed\n  }\n}];"
+      },
+      "id": "parse-router-001",
+      "name": "Parse & Validate AI Router Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "revenue_recovery",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "revenue_recovery"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "customer_intent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "customer_intent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "delivery_exception",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delivery_exception"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "inventory_rescue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "inventory_rescue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "returns_intelligence",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "returns_intelligence"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing.agent }}",
+                    "rightValue": "winback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "winback"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "switch-router-001",
+      "name": "Route to Agent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "REVENUE_RECOVERY_WORKFLOW_ID",
+        "options": {}
+      },
+      "id": "exec-revenue-001",
+      "name": "Execute Revenue Recovery Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1720, 0]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "CUSTOMER_INTENT_WORKFLOW_ID",
+        "options": {}
+      },
+      "id": "exec-intent-001",
+      "name": "Execute Customer Intent Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1720, 160]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "DELIVERY_EXCEPTION_WORKFLOW_ID",
+        "options": {}
+      },
+      "id": "exec-delivery-001",
+      "name": "Execute Delivery Exception Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1720, 320]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "INVENTORY_RESCUE_WORKFLOW_ID",
+        "options": {}
+      },
+      "id": "exec-inventory-001",
+      "name": "Execute Inventory Rescue Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1720, 480]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "RETURNS_INTELLIGENCE_WORKFLOW_ID",
+        "options": {}
+      },
+      "id": "exec-returns-001",
+      "name": "Execute Returns Intelligence Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1720, 640]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "WINBACK_WORKFLOW_ID",
+        "options": {}
+      },
+      "id": "exec-winback-001",
+      "name": "Execute Win-Back Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1720, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentResult = $input.first().json;\nconst upstream = $('Parse & Validate AI Router Output').first().json;\n\nconst standardized = {\n  agent: agentResult.agent || upstream.routing?.agent || 'unknown',\n  decision: agentResult.decision || 'UNKNOWN',\n  action: agentResult.action || '',\n  confidence: agentResult.confidence || upstream.routing?.confidence || 0,\n  reason: agentResult.reason || upstream.routing?.reason || '',\n  customerId: agentResult.customerId || upstream.event?.customerId || '',\n  orderId: agentResult.orderId || upstream.event?.orderId || '',\n  status: agentResult.status || 'completed',\n  timestamp: new Date().toISOString(),\n  eventType: upstream.event?.eventType || '',\n  channel: agentResult.channel || '',\n  message: agentResult.message || '',\n  escalate: agentResult.escalate || false,\n  priority: agentResult.priority || upstream.routing?.priority || 'medium',\n  result: agentResult\n};\n\nreturn [{ json: standardized }];"
+      },
+      "id": "standardize-result-001",
+      "name": "Standardize Agent Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "AI_AGENT_LOG"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "agent": "={{ $json.agent }}",
+            "eventType": "={{ $json.eventType }}",
+            "customerId": "={{ $json.customerId }}",
+            "orderId": "={{ $json.orderId }}",
+            "decision": "={{ $json.decision }}",
+            "action": "={{ $json.action }}",
+            "confidence": "={{ $json.confidence }}",
+            "reason": "={{ $json.reason }}",
+            "status": "={{ $json.status }}",
+            "result": "={{ JSON.stringify($json.result) }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "log-sheets-001",
+      "name": "Log to Google Sheets — AI_AGENT_LOG",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2240, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL",
+          "name": "GOOGLE_SHEETS_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, agent: $json.agent, decision: $json.decision, status: $json.status, timestamp: $json.timestamp } }}",
+        "options": {}
+      },
+      "id": "respond-webhook-001",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const upstream = $input.first().json;\nreturn [{\n  json: {\n    agent: 'unsupported',\n    decision: 'HUMAN_REVIEW',\n    action: 'NO_ACTION',\n    confidence: 0,\n    reason: 'Event type not supported or routing failed',\n    customerId: upstream.event?.customerId || '',\n    orderId: upstream.event?.orderId || '',\n    status: 'unsupported',\n    timestamp: new Date().toISOString(),\n    eventType: upstream.event?.eventType || 'unknown',\n    escalate: true,\n    priority: 'medium'\n  }\n}];"
+      },
+      "id": "unsupported-fallback-001",
+      "name": "Unsupported Event Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 960]
+    }
+  ],
+  "connections": {
+    "Webhook — Ecommerce Events": {
+      "main": [[{ "node": "Normalize Event", "type": "main", "index": 0 }]]
+    },
+    "Normalize Event": {
+      "main": [[{ "node": "Plan Context Collection", "type": "main", "index": 0 }]]
+    },
+    "Plan Context Collection": {
+      "main": [[{ "node": "Collect Context (Shopify-ready)", "type": "main", "index": 0 }]]
+    },
+    "Collect Context (Shopify-ready)": {
+      "main": [[{ "node": "AI Router (Classify)", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Router (Classify)", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Router (Classify)": {
+      "main": [[{ "node": "Parse & Validate AI Router Output", "type": "main", "index": 0 }]]
+    },
+    "Parse & Validate AI Router Output": {
+      "main": [[{ "node": "Route to Agent", "type": "main", "index": 0 }]]
+    },
+    "Route to Agent": {
+      "main": [
+        [{ "node": "Execute Revenue Recovery Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Customer Intent Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Delivery Exception Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Inventory Rescue Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Returns Intelligence Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Win-Back Agent", "type": "main", "index": 0 }],
+        [{ "node": "Unsupported Event Fallback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Execute Revenue Recovery Agent": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Execute Customer Intent Agent": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Execute Delivery Exception Agent": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Execute Inventory Rescue Agent": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Execute Returns Intelligence Agent": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Execute Win-Back Agent": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Unsupported Event Fallback": {
+      "main": [[{ "node": "Standardize Agent Result", "type": "main", "index": 0 }]]
+    },
+    "Standardize Agent Result": {
+      "main": [[{ "node": "Log to Google Sheets — AI_AGENT_LOG", "type": "main", "index": 0 }]]
+    },
+    "Log to Google Sheets — AI_AGENT_LOG": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

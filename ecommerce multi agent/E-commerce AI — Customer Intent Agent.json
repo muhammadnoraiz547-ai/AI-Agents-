@@ -1,0 +1,260 @@
+{
+  "name": "E-commerce AI — Customer Intent Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "405accb4-e9c5-4a4e-b0f3-e73ed8466a43",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1312,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst event = input.event || input;\nconst context = input.context || {};\nconst message = context.message || context.rawPayload?.message || context.rawPayload?.body || context.rawPayload?.text || '';\nconst customer = context.customer || {};\nconst products = context.rawPayload?.availableProducts || context.products || [];\n\nif (!message) {\n  return [{\n    json: {\n      agent: 'customer_intent',\n      decision: 'HUMAN_REVIEW',\n      reason: 'No customer message provided',\n      confidence: 0,\n      action: 'HUMAN_HANDOFF',\n      channel: 'none',\n      message: '',\n      escalate: true,\n      priority: 'medium',\n      customerId: event.customerId || '',\n      orderId: event.orderId || '',\n      status: 'error_missing_data',\n      intent: 'unknown',\n      productCriteria: {},\n      recommendedProducts: []\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    event,\n    context,\n    message,\n    customer,\n    availableProducts: products,\n    customerId: event.customerId || customer.id || ''\n  }\n}];"
+      },
+      "id": "5b0106a9-08d2-4998-b65f-8f8e0c566100",
+      "name": "Prepare Message Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "e69504da-fec1-489c-8927-3dba617355a7",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -832,
+        336
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Customer Intent Agent. Analyze the customer message and extract shopping intent. Only recommend products from the provided availableProducts list. Never hallucinate stock or products.\n\nCustomer message:\n\"{{ $json.message }}\"\n\nCustomer history snippet:\n{{ JSON.stringify($json.customer) }}\n\nAvailable products (use only these):\n{{ JSON.stringify($json.availableProducts) }}\n\nExtract and return STRICT JSON only:\n{\n  \"intent\": \"product_question|purchase_intent|shipping_concern|complaint|size_help|budget_inquiry|general\",\n  \"confidence\": 0.0-1.0,\n  \"productCriteria\": {\n    \"category\": \"\",\n    \"budgetMax\": null,\n    \"preferences\": [],\n    \"urgency\": \"low|medium|high\"\n  },\n  \"recommendedProducts\": [{\"id\": \"\", \"name\": \"\", \"reason\": \"\"}],\n  \"recommendedAction\": \"PRODUCT_RECOMMENDATION|CHECKOUT_ASSISTANCE|ANSWER_QUESTION|HUMAN_HANDOFF|FOLLOW_UP\",\n  \"replyMessage\": \"short helpful reply\",\n  \"escalate\": false,\n  \"priority\": \"low|medium|high\"\n}"
+      },
+      "id": "aec6d986-962a-4cfa-8efb-da8aedcd1d69",
+      "name": "AI Intent Extraction",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -832,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = item.text || item.output || JSON.stringify(item);\ntext = String(text).replace(/```json\\n?/gi, '').replace(/```\\n?/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  parsed = {\n    intent: 'unknown',\n    confidence: 0.1,\n    productCriteria: {},\n    recommendedProducts: [],\n    recommendedAction: 'HUMAN_HANDOFF',\n    replyMessage: '',\n    escalate: true,\n    priority: 'medium'\n  };\n}\n\nconst upstream = $('Prepare Message Context').first().json;\nconst allowedActions = ['PRODUCT_RECOMMENDATION','CHECKOUT_ASSISTANCE','ANSWER_QUESTION','HUMAN_HANDOFF','FOLLOW_UP'];\nif (!allowedActions.includes(parsed.recommendedAction)) {\n  parsed.recommendedAction = 'HUMAN_HANDOFF';\n  parsed.escalate = true;\n}\n\n// Filter recommended products to only those that exist in available list (safety)\nconst availableIds = new Set((upstream.availableProducts || []).map(p => String(p.id || p.productId)));\nconst safeProducts = (parsed.recommendedProducts || []).filter(p => availableIds.size === 0 || availableIds.has(String(p.id)));\n\nreturn [{\n  json: {\n    agent: 'customer_intent',\n    decision: parsed.recommendedAction,\n    reason: `Intent: ${parsed.intent} | confidence ${parsed.confidence}`,\n    confidence: Number(parsed.confidence) || 0,\n    action: parsed.recommendedAction,\n    channel: 'email',\n    message: parsed.replyMessage || '',\n    escalate: !!parsed.escalate,\n    priority: parsed.priority || 'medium',\n    customerId: upstream.customerId,\n    orderId: upstream.event?.orderId || '',\n    status: 'decided',\n    intent: parsed.intent,\n    productCriteria: parsed.productCriteria || {},\n    recommendedProducts: safeProducts\n  }\n}];"
+      },
+      "id": "abbb7971-cc7b-4129-b9a5-4cf93c52fd25",
+      "name": "Parse & Validate Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.escalate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "54d03034-b179-44f3-a6f6-ba76ac6460d5",
+      "name": "Escalate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -352,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJGM6PZV5",
+          "mode": "list",
+          "cachedResultName": "social"
+        },
+        "text": "=🚨 *Customer Intent — Human Handoff*\\nCustomer: {{ $json.customerId }}\\nIntent: {{ $json.intent }}\\nAction: {{ $json.action }}\\nConfidence: {{ $json.confidence }}\\nMessage: {{ $json.message }}",
+        "otherOptions": {}
+      },
+      "id": "c0efead5-462c-4f60-9519-10e036a46f75",
+      "name": "Slack — Handoff Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        48
+      ],
+      "webhookId": "dde5ba03-7f28-47cd-80c4-cfb3ddeab749",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "GnwIKg091OVlGxbb",
+          "name": "Slack account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{\n  json: {\n    ...d,\n    status: d.escalate ? 'escalated' : 'completed'\n  }\n}];"
+      },
+      "id": "8603dfdd-71f1-42e6-8acb-02dc1801e850",
+      "name": "Finalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        160
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message Context": {
+      "main": [
+        [
+          {
+            "node": "AI Intent Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Intent Extraction",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intent Extraction": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate Intent": {
+      "main": [
+        [
+          {
+            "node": "Escalate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Handoff Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Handoff Alert": {
+      "main": [
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6fbb30da-1146-4d3a-9a4e-d1cd72e209b6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f9214f644faefcbd163a49527dd7da0582af489ef606043ead44f1cbc142237"
+  },
+  "nodeGroups": [],
+  "id": "yNovfQK6ogHtOL4P",
+  "tags": []
+}

@@ -1,0 +1,260 @@
+{
+  "name": "E-commerce AI — Returns Intelligence Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "343993eb-11ac-40c3-9eea-d5adb32b88a4",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1280,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst event = input.event || input;\nconst context = input.context || {};\nconst order = context.order || {};\nconst customer = context.customer || {};\nconst reason = context.returnReason || context.rawPayload?.reason || 'not_provided';\nconst returnHistoryCount = (context.rawPayload?.returnHistory || []).length || customer.returnCount || 0;\n\nreturn [{\n  json: {\n    event,\n    context,\n    order,\n    customer,\n    reason,\n    returnHistoryCount,\n    orderValue: order.value || context.rawPayload?.orderValue || 0,\n    productId: event.productId || context.product?.id || '',\n    daysSincePurchase: context.rawPayload?.daysSincePurchase || null\n  }\n}];"
+      },
+      "id": "21df691e-78f4-4e48-aece-95bb46ab9373",
+      "name": "Prepare Return Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "2d54bb41-b114-4216-ac19-2623648ff345",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -800,
+        320
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Returns Intelligence Agent. Evaluate return risk and policy eligibility. NEVER automatically deny a legitimate return based only on AI suspicion. High-risk cases must go to HUMAN_REVIEW.\n\nReturn reason: {{ $json.reason }}\nOrder value: {{ $json.orderValue }}\nCustomer previous returns: {{ $json.returnHistoryCount }}\nDays since purchase: {{ $json.daysSincePurchase }}\nProduct ID: {{ $json.productId }}\n\nRisk levels: LOW_RISK | MEDIUM_RISK | HIGH_RISK\n\nAllowed actions: AUTO_APPROVE | HUMAN_REVIEW | REQUEST_INFORMATION | ESCALATE\n\nAlso detect PRODUCT_QUALITY_SIGNAL if the reason suggests a systemic product issue.\n\nReturn STRICT JSON only:\n{\n  \"risk\": \"LOW_RISK|MEDIUM_RISK|HIGH_RISK\",\n  \"decision\": \"AUTO_APPROVE|HUMAN_REVIEW|REQUEST_INFORMATION|ESCALATE\",\n  \"reason\": \"...\",\n  \"confidence\": 0.0-1.0,\n  \"action\": \"...\",\n  \"channel\": \"slack|email|none\",\n  \"message\": \"internal or customer note\",\n  \"escalate\": false,\n  \"priority\": \"low|medium|high\",\n  \"productQualitySignal\": false\n}"
+      },
+      "id": "cbd04944-8cb9-4ebf-8678-2f639ec33a3e",
+      "name": "AI Return Risk Evaluation",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -800,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = item.text || item.output || JSON.stringify(item);\ntext = String(text).replace(/```json\\n?/gi, '').replace(/```\\n?/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  parsed = {\n    risk: 'MEDIUM_RISK',\n    decision: 'HUMAN_REVIEW',\n    reason: 'AI parse failed',\n    confidence: 0.1,\n    action: 'HUMAN_REVIEW',\n    channel: 'slack',\n    message: '',\n    escalate: true,\n    priority: 'medium',\n    productQualitySignal: false\n  };\n}\n\nconst upstream = $('Prepare Return Context').first().json;\nconst allowed = ['AUTO_APPROVE','HUMAN_REVIEW','REQUEST_INFORMATION','ESCALATE'];\nif (!allowed.includes(parsed.decision)) {\n  parsed.decision = 'HUMAN_REVIEW';\n  parsed.escalate = true;\n}\n// Safety: never auto-deny\nif (parsed.decision === 'DENY' || parsed.decision === 'AUTO_DENY') {\n  parsed.decision = 'HUMAN_REVIEW';\n  parsed.escalate = true;\n}\n\nreturn [{\n  json: {\n    agent: 'returns_intelligence',\n    decision: parsed.decision,\n    reason: parsed.reason || '',\n    confidence: Number(parsed.confidence) || 0,\n    action: parsed.action || parsed.decision,\n    channel: parsed.channel || 'slack',\n    message: parsed.message || '',\n    escalate: !!parsed.escalate || parsed.decision !== 'AUTO_APPROVE',\n    priority: parsed.priority || 'medium',\n    risk: parsed.risk || 'MEDIUM_RISK',\n    productQualitySignal: !!parsed.productQualitySignal,\n    customerId: upstream.event?.customerId || '',\n    orderId: upstream.event?.orderId || '',\n    status: 'decided'\n  }\n}];"
+      },
+      "id": "086c981f-b550-4cf7-a344-d74550a4cf22",
+      "name": "Parse & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.escalate || $json.productQualitySignal }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "11142087-ac32-46dc-a60d-07c058fd9ae3",
+      "name": "Needs Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJGM6PZV5",
+          "mode": "list",
+          "cachedResultName": "social"
+        },
+        "text": "=↩️ *Returns Intelligence*\\nRisk: {{ $json.risk }}\\nDecision: {{ $json.decision }}\\nOrder: {{ $json.orderId }}\\nCustomer: {{ $json.customerId }}\\nQuality Signal: {{ $json.productQualitySignal }}\\nReason: {{ $json.reason }}\\nConfidence: {{ $json.confidence }}",
+        "otherOptions": {}
+      },
+      "id": "62660226-2186-4199-9b63-c2c0f95bf91f",
+      "name": "Slack — Return / Quality Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        32
+      ],
+      "webhookId": "9c2f6486-92fb-479e-baa9-1ec77ab9b5ff",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "GnwIKg091OVlGxbb",
+          "name": "Slack account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{\n  json: {\n    ...d,\n    status: d.decision === 'AUTO_APPROVE' ? 'auto_approved' : (d.escalate ? 'escalated' : 'reviewed')\n  }\n}];"
+      },
+      "id": "d4ee4e8d-5322-44b8-989c-229fe9ea903a",
+      "name": "Finalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        144
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Return Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Return Context": {
+      "main": [
+        [
+          {
+            "node": "AI Return Risk Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Return Risk Evaluation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Return Risk Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate": {
+      "main": [
+        [
+          {
+            "node": "Needs Alert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Alert?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Return / Quality Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Return / Quality Alert": {
+      "main": [
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b55d83f9-48fa-478a-927c-9e23ee43bf3d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f9214f644faefcbd163a49527dd7da0582af489ef606043ead44f1cbc142237"
+  },
+  "nodeGroups": [],
+  "id": "gg3XarUYwfA5NooQ",
+  "tags": []
+}

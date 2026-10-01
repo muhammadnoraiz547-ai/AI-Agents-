@@ -1,0 +1,284 @@
+{
+  "name": "E-commerce AI — Inventory Rescue Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "5185ed68-a9e1-436a-b74f-4130c0704283",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1200,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst event = input.event || input;\nconst context = input.context || {};\nconst product = context.product || {};\nconst inv = context.inventory || {};\nconst qty = inv.quantity !== undefined ? inv.quantity : (context.rawPayload?.inventory ?? product.inventory ?? null);\nconst sales24h = inv.salesLast24h || context.salesVelocity || context.rawPayload?.salesLast24h || 0;\n\nif (qty === null || qty === undefined) {\n  return [{\n    json: {\n      agent: 'inventory_rescue',\n      decision: 'HUMAN_REVIEW',\n      reason: 'Missing inventory quantity',\n      confidence: 0,\n      action: 'CREATE_TASK',\n      channel: 'slack',\n      message: '',\n      escalate: true,\n      priority: 'high',\n      customerId: '',\n      orderId: '',\n      status: 'error_missing_data',\n      risk: 'UNKNOWN'\n    }\n  }];\n}\n\nconst daysOfStock = sales24h > 0 ? (qty / sales24h) : (qty > 0 ? 999 : 0);\n\nreturn [{\n  json: {\n    event,\n    context,\n    product,\n    quantity: qty,\n    salesLast24h: sales24h,\n    daysOfStock: Math.round(daysOfStock * 10) / 10,\n    productId: event.productId || product.id || '',\n    productName: product.name || context.rawPayload?.name || 'Product'\n  }\n}];"
+      },
+      "id": "808c6ddc-a897-4ce6-a614-143bc916df4a",
+      "name": "Calculate Stock Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "f4f24123-9b56-4af0-a545-3d7e8431ef22",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        288
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Inventory Rescue Agent. Assess stockout risk. Never change inventory or place real purchase orders.\n\nProduct: {{ $json.productName }} (ID: {{ $json.productId }})\nCurrent quantity: {{ $json.quantity }}\nSales last 24h: {{ $json.salesLast24h }}\nEstimated days of stock: {{ $json.daysOfStock }}\n\nRisk levels: LOW_RISK | WATCH | HIGH_RISK | CRITICAL\n\nAllowed actions: NO_ACTION | REORDER_ALERT | SLACK_ALERT | CREATE_TASK | PROMOTION_REVIEW | SUBSTITUTE_PRODUCT_RECOMMENDATION\n\nRules:\n- daysOfStock < 1 → CRITICAL\n- daysOfStock < 3 → HIGH_RISK\n- daysOfStock < 7 → WATCH\n- else LOW_RISK\n- High velocity + low stock → REORDER_ALERT + SLACK_ALERT\n\nReturn STRICT JSON only:\n{\n  \"risk\": \"LOW_RISK|WATCH|HIGH_RISK|CRITICAL\",\n  \"decision\": \"action_name\",\n  \"reason\": \"...\",\n  \"confidence\": 0.0-1.0,\n  \"action\": \"...\",\n  \"channel\": \"slack|none\",\n  \"message\": \"internal note\",\n  \"escalate\": false,\n  \"priority\": \"low|medium|high|critical\"\n}"
+      },
+      "id": "07ec7232-ea63-43a9-81f9-c9746bad7f03",
+      "name": "AI Risk Evaluation",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -720,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = item.text || item.output || JSON.stringify(item);\ntext = String(text).replace(/```json\\n?/gi, '').replace(/```\\n?/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  parsed = {\n    risk: 'HIGH_RISK',\n    decision: 'SLACK_ALERT',\n    reason: 'AI parse failed — default to alert',\n    confidence: 0.1,\n    action: 'SLACK_ALERT',\n    channel: 'slack',\n    message: '',\n    escalate: true,\n    priority: 'high'\n  };\n}\n\nconst upstream = $('Calculate Stock Metrics').first().json;\nconst allowed = ['NO_ACTION','REORDER_ALERT','SLACK_ALERT','CREATE_TASK','PROMOTION_REVIEW','SUBSTITUTE_PRODUCT_RECOMMENDATION'];\nif (!allowed.includes(parsed.decision)) {\n  parsed.decision = 'SLACK_ALERT';\n}\n\nreturn [{\n  json: {\n    agent: 'inventory_rescue',\n    decision: parsed.decision,\n    reason: parsed.reason || '',\n    confidence: Number(parsed.confidence) || 0,\n    action: parsed.action || parsed.decision,\n    channel: 'slack',\n    message: parsed.message || '',\n    escalate: !!parsed.escalate || ['HIGH_RISK','CRITICAL'].includes(parsed.risk),\n    priority: parsed.priority || 'medium',\n    risk: parsed.risk || 'WATCH',\n    customerId: '',\n    orderId: '',\n    productId: upstream.productId,\n    status: 'decided',\n    quantity: upstream.quantity,\n    daysOfStock: upstream.daysOfStock\n  }\n}];"
+      },
+      "id": "9af4bae1-60fd-401b-b341-98c966e9a896",
+      "name": "Parse & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "NO_ACTION",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a626d193-d040-4cd7-ada9-427d258dff64",
+      "name": "Needs Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJGM6PZV5",
+          "mode": "list",
+          "cachedResultName": "social"
+        },
+        "text": "=📦 *Inventory Rescue Alert*\\nRisk: {{ $json.risk }}\\nProduct: {{ $json.productId }}\\nQty: {{ $json.quantity }} | Days of stock: {{ $json.daysOfStock }}\\nDecision: {{ $json.decision }}\\nReason: {{ $json.reason }}\\nConfidence: {{ $json.confidence }}",
+        "otherOptions": {}
+      },
+      "id": "e11d8db3-9409-4019-a869-d14e3d8c2f20",
+      "name": "Slack — Inventory Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "523821ad-06c1-4cad-b23d-bf13b4291462",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "GnwIKg091OVlGxbb",
+          "name": "Slack account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{\n  json: {\n    ...d,\n    status: d.escalate ? 'escalated' : 'alerted'\n  }\n}];"
+      },
+      "id": "e38177a5-18c4-4a1b-b086-5bd014363a18",
+      "name": "Finalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{ json: { ...d, status: 'no_action', action: 'NO_ACTION' } }];"
+      },
+      "id": "594258b0-c227-414e-a284-d3c96eddae20",
+      "name": "No Action Path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Calculate Stock Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Stock Metrics": {
+      "main": [
+        [
+          {
+            "node": "AI Risk Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Risk Evaluation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Risk Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate": {
+      "main": [
+        [
+          {
+            "node": "Needs Alert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Alert?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Inventory Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Inventory Alert": {
+      "main": [
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Action Path": {
+      "main": [
+        [
+          {
+            "node": "Finalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "eb6171d0-383f-4336-b35e-df3bb70a7971",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f9214f644faefcbd163a49527dd7da0582af489ef606043ead44f1cbc142237"
+  },
+  "nodeGroups": [],
+  "id": "PoXujSUOWVI1rxmj",
+  "tags": []
+}
