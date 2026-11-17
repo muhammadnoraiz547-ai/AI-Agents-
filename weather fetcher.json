@@ -1,0 +1,229 @@
+{
+  "name": "weather fetcher",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{\n\"https://api.open-meteo.com/v1/forecast?latitude=40.7128\"\n+ \"&longitude=-74.0060\"\n+ \"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode\"\n+ \"&timezone=auto\"\n+ \"&start_date=\" + $now.toFormat(\"yyyy-MM-dd\")\n+ \"&end_date=\" + $now.plus({ days: 7 }).toFormat(\"yyyy-MM-dd\")\n}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -32,
+        -32
+      ],
+      "id": "69833fef-db4e-44fa-9599-18e72fd21555",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "56e6aab1-5f72-4edc-8b78-0e8956814544",
+              "leftValue": "={{ $json.daily.temperature_2m_max[0] }}",
+              "rightValue": 15,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        -32
+      ],
+      "id": "8468c8a9-2d08-49ce-8a16-d24483604859",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "\n{\n  \"highTemperature\": \"{{ $json.daily.temperature_2m_max?.[0] }} {{ $json.daily_units.temperature_2m_max }}\",\n  \"lowTemperature\": \"{{ $json.daily.temperature_2m_min?.[0] }} {{ $json.daily_units.temperature_2m_min }}\",\n  \"weathercode\": \"{{ $json.daily.weathercode?.[0] }}\",\n  \"forecast\": \"Today’s weather forecast ☀️ <br> Temperature: High {{ $json.daily.temperature_2m_max?.[0] }} {{ $json.daily_units.temperature_2m_max }} | Low {{ $json.daily.temperature_2m_min?.[0] }} {{ $json.daily_units.temperature_2m_min }} <br> Advice: It’s warm and sunny, put on some sun protection and bring your shades 😎\"\n}\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        32
+      ],
+      "id": "16a7d39e-1b66-4350-a9c0-9f141e85fc94",
+      "name": "hot"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"highTemperature\": \"{{ $json.daily.temperature_2m_max[0] }} {{ $json.daily_units.temperature_2m_max }}\",\n  \"lowTemperature\": \"{{ $json.daily.temperature_2m_min[0] }} {{ $json.daily_units.temperature_2m_min }}\",\n  \"weathercode\": \"{{ $json.daily.weathercode[0] }}\",\n  \"forecast\": \"Today’s weather forecast: ☁️ <br> Temperature: High {{ $json.daily.temperature_2m_max[0] }} {{ $json.daily_units.temperature_2m_max }} | Low {{ $json.daily.temperature_2m_min[0] }} {{ $json.daily_units.temperature_2m_min }}\"\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        -112
+      ],
+      "id": "62c537f1-8244-4f91-8557-742cf2c12dc8",
+      "name": "cold"
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "todays weather forecast",
+        "message": "=<h2>Today's Weather Forecast 🌤️</h2>\n<p><b>Temperature High:</b> {{ $('HTTP Request').item.json.daily.temperature_2m_max[0] }}°C</p>\n<p><b>Temperature Low:</b> {{ $('HTTP Request').item.json.daily.temperature_2m_min[0] }}°C</p>\n<p><b>Advice:</b> Garam kapray pehno! 🧥</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        -112
+      ],
+      "id": "9b46a291-461d-498d-a517-726362ca7e60",
+      "name": "Send a message",
+      "webhookId": "13dd2249-89b3-466c-bc53-197d7332538b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "todays weather forecast",
+        "message": "={{ $json.forecast }}\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        112
+      ],
+      "id": "2ad27017-2cd5-4ce3-b3c6-8c42a2fc6bf7",
+      "name": "Send a message1",
+      "webhookId": "13dd2249-89b3-466c-bc53-197d7332538b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        -32
+      ],
+      "id": "aca848f7-2396-4723-b1dd-cf8abb8cd2d0",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "cold",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "hot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cold": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "hot": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d3222dae-6664-4548-b655-b7c3475377f7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f1b6bda7f77dd4d12edc64c89ffd65f0bf64dab0f46e67478798e415cd1d17e"
+  },
+  "id": "a5VQqFecIJcwnTHD",
+  "tags": []
+}

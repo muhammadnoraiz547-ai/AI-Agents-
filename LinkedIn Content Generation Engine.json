@@ -1,0 +1,625 @@
+{
+  "name": "LinkedIn Content Generation Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "fda4db57-17df-49e9-b42a-b52672ca39d4",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        112
+      ],
+      "webhookId": "voice-linkedin-engine",
+      "credentials": {
+        "telegramApi": {
+          "id": "nfJbDzHVJ5EBHQyD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-callback",
+              "leftValue": "={{ $json.callback_query }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be76fd1c-07f5-4ec6-8e69-a253676857dc",
+      "name": "Message or Callback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-voice",
+              "leftValue": "={{ $json.message.voice }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "736ad378-3571-4ca4-b87e-4654628bf4aa",
+      "name": "Has Voice Note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        16,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "ad37c8a1-7104-46d3-8800-c0374a78b6ba",
+      "name": "Download Voice File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        112
+      ],
+      "webhookId": "fabfd1d0-20cf-437b-b098-a7f78ffe4848",
+      "credentials": {
+        "telegramApi": {
+          "id": "nfJbDzHVJ5EBHQyD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Telegram sends .oga — Groq prefers .ogg\nconst binary = $input.first().binary.data;\nconst newBinary = {\n  ...binary,\n  fileName: (binary.fileName || 'voice').replace(/\\.oga$/i, '.ogg'),\n  mimeType: 'audio/ogg'\n};\nreturn [{\n  json: $input.first().json,\n  binary: { data: newBinary }\n}];"
+      },
+      "id": "982ce4b8-aa11-4017-a90a-907cbf6123df",
+      "name": "Fix Extension (.ogg)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-large-v3-turbo"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6422c57-3da5-4118-84ea-b9b520587b27",
+      "name": "Groq Whisper Transcribe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        688,
+        112
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UKbCqUiZS7rm4EgY",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.7,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a LinkedIn content engine for a busy Indian founder/builder. Style rules:\\n- Direct, conversational, slightly raw, desi-founder energy\\n- Short paragraphs, strong first line\\n- Mix of English + natural Hinglish when it feels right\\n- No corporate fluff, no hashtags, no emojis overload\\n- Story + insight + soft CTA\\n- Keep full_draft under 220 words\\n\\nOutput ONLY valid JSON with exactly these keys:\\n{\\n  \\\"idea\\\": \\\"one-line core idea\\\",\\n  \\\"hook1\\\": \\\"first strong hook\\\",\\n  \\\"hook2\\\": \\\"second different strong hook\\\",\\n  \\\"full_draft\\\": \\\"complete LinkedIn post using one of the hooks\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Voice transcript:\\n\\n{{ $json.text }}\\n\\nCreate 2 hooks + full draft in the style above.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "a3c67ea0-6866-445e-984a-109f11a29e2c",
+      "name": "Generate Idea + 2 Hooks + Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        912,
+        112
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UKbCqUiZS7rm4EgY",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.choices[0].message.content;\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  // fallback if model wraps it\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = match ? JSON.parse(match[0]) : { idea: raw, hook1: '', hook2: '', full_draft: raw };\n}\n\nconst id = `ln_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;\nconst chatId = $('Telegram Trigger').item.json.message.chat.id;\nconst transcript = $('Groq Whisper Transcribe').item.json.text;\n\nreturn [{\n  json: {\n    id,\n    created_at: new Date().toISOString(),\n    chat_id: chatId,\n    transcript,\n    idea: parsed.idea || '',\n    hook1: parsed.hook1 || '',\n    hook2: parsed.hook2 || '',\n    full_draft: parsed.full_draft || '',\n    status: 'pending'\n  }\n}];"
+      },
+      "id": "193f6778-7d61-4b55-b92d-931a3923f944",
+      "name": "Parse JSON + Create ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Content_Queue",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "created_at": "={{ $json.created_at }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "transcript": "={{ $json.transcript }}",
+            "idea": "={{ $json.idea }}",
+            "hook1": "={{ $json.hook1 }}",
+            "hook2": "={{ $json.hook2 }}",
+            "full_draft": "={{ $json.full_draft }}",
+            "status": "pending"
+          }
+        },
+        "options": {}
+      },
+      "id": "edf33e7e-64f7-4e04-96f3-4647315b4d5f",
+      "name": "Save to Content_Queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1360,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=🎯 *New LinkedIn Draft Ready*\n\n*Idea:* {{ $json.idea }}\n\n---\n\n*Hook 1:*\n{{ $json.hook1 }}\n\n*Hook 2:*\n{{ $json.hook2 }}\n\n---\n\n*Full Draft:*\n{{ $json.full_draft }}\n\n---\nChoose one:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve Hook 1",
+                    "additionalFields": {
+                      "callback_data": "=approve1_{{ $json.id }}"
+                    }
+                  },
+                  {
+                    "text": "✅ Approve Hook 2",
+                    "additionalFields": {
+                      "callback_data": "=approve2_{{ $json.id }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✏️ Keep for later",
+                    "additionalFields": {
+                      "callback_data": "=later_{{ $json.id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Discard",
+                    "additionalFields": {
+                      "callback_data": "=discard_{{ $json.id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "23b6dcc9-e8c3-4b52-ab84-e5cf056426c6",
+      "name": "Send Approval Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1584,
+        112
+      ],
+      "webhookId": "52abacba-a74a-4d15-9ea4-49a12e855b42",
+      "credentials": {
+        "telegramApi": {
+          "id": "nfJbDzHVJ5EBHQyD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_query.id }}",
+        "additionalFields": {
+          "text": "Got it 👍"
+        }
+      },
+      "id": "9d4ce277-b13d-45a7-af9e-4a14f9a75f27",
+      "name": "Answer Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        -80
+      ],
+      "webhookId": "0b5248e1-bab9-47d2-b8c2-1904aea046c3",
+      "credentials": {
+        "telegramApi": {
+          "id": "nfJbDzHVJ5EBHQyD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json.callback_query.data;\nconst parts = data.split('_');\nconst action = parts[0]; // approve1 | approve2 | later | discard\nconst id = parts.slice(1).join('_');\n\nreturn [{\n  json: {\n    action,\n    id,\n    chat_id: $json.callback_query.message.chat.id,\n    message_id: $json.callback_query.message.message_id,\n    original_text: $json.callback_query.message.text\n  }\n}];"
+      },
+      "id": "3c6d1e4a-d6c6-4a60-8f74-837ec80911e5",
+      "name": "Parse Callback Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Content_Queue",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "={{ $json.action === 'discard' ? 'discarded' : ($json.action === 'later' ? 'later' : 'approved') }}",
+            "selected_hook": "={{ $json.action === 'approve1' ? 'hook1' : ($json.action === 'approve2' ? 'hook2' : '') }}",
+            "approval_message_id": "={{ $json.message_id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6bbdae0d-66f4-4260-86f5-e2b0502ab802",
+      "name": "Update Status in Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        464,
+        -80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $json.chat_id }}",
+        "messageId": "={{ $json.message_id }}",
+        "text": "={{ $json.action === 'discard' ? '❌ Discarded' : ($json.action === 'later' ? '✏️ Saved for later' : '✅ Approved — moved to Content_Queue') }}\n\nID: `{{ $json.id }}`",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "ed3cf9bf-7871-474e-bbc6-e0274e2d81c0",
+      "name": "Edit Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        688,
+        -80
+      ],
+      "webhookId": "5d87547d-90ae-4e9e-a790-706ddbb3d4da",
+      "credentials": {
+        "telegramApi": {
+          "id": "nfJbDzHVJ5EBHQyD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Send a voice note 🎤\n\nI’ll turn it into a LinkedIn post draft with 2 hooks in ~30-60 seconds.",
+        "additionalFields": {}
+      },
+      "id": "d717e27c-31c7-4d89-bf28-5d1233698fff",
+      "name": "Not Voice → Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        304
+      ],
+      "webhookId": "90da954f-193b-4eb3-9088-aa6b367a8964",
+      "credentials": {
+        "telegramApi": {
+          "id": "nfJbDzHVJ5EBHQyD",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message or Callback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message or Callback?": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Voice Note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Voice Note?": {
+      "main": [
+        [
+          {
+            "node": "Download Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not Voice → Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Voice File": {
+      "main": [
+        [
+          {
+            "node": "Fix Extension (.ogg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Extension (.ogg)": {
+      "main": [
+        [
+          {
+            "node": "Groq Whisper Transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Whisper Transcribe": {
+      "main": [
+        [
+          {
+            "node": "Generate Idea + 2 Hooks + Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Idea + 2 Hooks + Draft": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON + Create ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON + Create ID": {
+      "main": [
+        [
+          {
+            "node": "Save to Content_Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Content_Queue": {
+      "main": [
+        [
+          {
+            "node": "Send Approval Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Callback": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback Data": {
+      "main": [
+        [
+          {
+            "node": "Update Status in Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status in Sheet": {
+      "main": [
+        [
+          {
+            "node": "Edit Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "80103134-f72e-4bd9-bb79-c5c5d586e9a9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "181c9f56cce69f302f4046d379363176ff9966f1b567cbc365152891f1a8dbb6"
+  },
+  "nodeGroups": [],
+  "id": "iQ83mt1Ksqr9QTxU",
+  "tags": []
+}

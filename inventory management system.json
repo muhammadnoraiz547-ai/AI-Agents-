@@ -1,0 +1,235 @@
+{
+  "name": "inventory management system",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi there! 👋\nMy name is hawsi mohsin. How can I assist you today?",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -288,
+        0
+      ],
+      "id": "d64784b7-a660-4cd9-a96f-a14274ac8713",
+      "name": "When chat message received",
+      "webhookId": "ec8a82d1-bea1-4335-88ea-bb4bbe986b23"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -112,
+        0
+      ],
+      "id": "d1ca7988-c6a0-4dca-aaca-83143cb75ba3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        240
+      ],
+      "id": "97e57fcd-714a-4f2e-80ef-efa6826aaa6d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4NN1saajMqTneIzQ",
+          "name": "Google Gemini(PaLM) Api account 4"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        224
+      ],
+      "id": "4d9af3f3-8a8d-4a1c-b3e3-cc20faa96ea0",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1eMLSa3CODwcdwOKNttz4-bQZgy7IxHt6KBCELi7BVdw",
+          "mode": "list",
+          "cachedResultName": "inventory management system",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eMLSa3CODwcdwOKNttz4-bQZgy7IxHt6KBCELi7BVdw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eMLSa3CODwcdwOKNttz4-bQZgy7IxHt6KBCELi7BVdw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "item name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('item_name__using_to_match_', ``, 'string') }}",
+            "quality in stock": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('quality_in_stock', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "item name"
+          ],
+          "schema": [
+            {
+              "id": "item name",
+              "displayName": "item name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality in stock",
+              "displayName": "quality in stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -16,
+        224
+      ],
+      "id": "45fa2d18-970b-47a0-822c-7528ea072046",
+      "name": "update invemtory stock",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SFibhfOq5ktt1nJ3",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1eMLSa3CODwcdwOKNttz4-bQZgy7IxHt6KBCELi7BVdw",
+          "mode": "list",
+          "cachedResultName": "inventory management system",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eMLSa3CODwcdwOKNttz4-bQZgy7IxHt6KBCELi7BVdw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eMLSa3CODwcdwOKNttz4-bQZgy7IxHt6KBCELi7BVdw/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        112,
+        224
+      ],
+      "id": "5286f3f0-1368-4b63-801b-8a18713445f4",
+      "name": "search inventory",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SFibhfOq5ktt1nJ3",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update invemtory stock": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search inventory": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "00b0735c-bcad-41e5-b337-4e42b4c31a06",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a3317da8a4a44dd9aee1acf069470ada45fe0882d5cef27cdc7ccda458f63b7f"
+  },
+  "id": "Wj2P54DqsyDYOVt4pCSB3",
+  "tags": []
+}

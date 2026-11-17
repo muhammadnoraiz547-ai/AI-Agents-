@@ -1,0 +1,1321 @@
+{
+  "name": "Customer Review Response Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Customer Review Form",
+        "formDescription": "We'd love to hear about your experience!",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Customer Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Customer Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Rating",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "1"
+                  },
+                  {
+                    "option": "2"
+                  },
+                  {
+                    "option": "3"
+                  },
+                  {
+                    "option": "4"
+                  },
+                  {
+                    "option": "5"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Review Text",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f1a943dc-fe7c-493e-8576-92a481aa4e1b",
+      "name": "Customer Review Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        656
+      ],
+      "webhookId": "bb47ca60-14ae-4173-af5e-38ec3c6c44d8"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Rating }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "c8aa53a7-1d14-4ae5-9f27-23feb69b4cc1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "POSITIVE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Rating }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    },
+                    "id": "fb7c2dd7-7dc5-4908-81ba-27c0c38aeb99"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NEUTRAL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Rating }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    },
+                    "id": "1d4fec36-d00a-46b4-b719-edf955513746"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NEGATIVE"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "017545a4-1f01-4ab3-931b-e092fee2b55f",
+      "name": "Switch1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -832,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1744657339,
+          "mode": "list",
+          "cachedResultName": "Reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=1744657339"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerEmail": "={{ $json.CustomerEmail }}",
+            "Response": "Psotive"
+          },
+          "matchingColumns": [
+            "CustomerEmail"
+          ],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CustomerEmail",
+              "displayName": "CustomerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ReviewText",
+              "displayName": "ReviewText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Rating",
+              "displayName": "Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "25a6f7d0-11f2-4b44-ab3c-714bac47b4c9",
+      "name": "update_to_positive1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -592,
+        448
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-subject",
+              "name": "EmailSubject",
+              "type": "string",
+              "value": "=Thank you for your feedback, {{ $('Customer Review Form').item.json['Customer Name'] }}!"
+            },
+            {
+              "id": "field-body",
+              "name": "EmailBody",
+              "type": "string",
+              "value": "=Hi {{ $('Customer Review Form').item.json['Customer Name'] }},\n\nThank you so much for the wonderful review! We're thrilled you enjoyed your experience with us and we hope to see you again soon.\n\nWarm regards,\nThe Team"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2d8ecf1-17fd-4ddc-b001-6adb42c87d49",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -352,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "265c6294-5e2b-4ceb-8d2e-43b9df9181db",
+      "name": "Loop Over Items2",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -112,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 83081995,
+          "mode": "list",
+          "cachedResultName": "ActionLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=83081995"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerName": "={{ $('Customer Review Form').item.json['Customer Name'] }}",
+            "Sentiment": "Positive",
+            "Action": "Thank you email sent",
+            "Timestamp": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action",
+              "displayName": "Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c588e247-f83d-4375-b1a4-ea29153266c4",
+      "name": "Append row in sheet2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        128,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Customer Review Form').item.json['Customer Email'] }}",
+        "subject": "={{ $json.EmailSubject }}",
+        "emailType": "text",
+        "message": "={{ $json.EmailBody }}",
+        "options": {}
+      },
+      "id": "653c21fb-5166-4888-95fa-b23723253696",
+      "name": "Send a message2",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        304
+      ],
+      "webhookId": "a55b1381-a588-4518-862d-7a8de719dcf1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PBU9LenxOte8a5w0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1744657339,
+          "mode": "list",
+          "cachedResultName": "Reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=1744657339"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerName": "={{ $json['Customer Name'] }}",
+            "Response": "Neutral"
+          },
+          "matchingColumns": [
+            "CustomerName"
+          ],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CustomerEmail",
+              "displayName": "CustomerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ReviewText",
+              "displayName": "ReviewText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Rating",
+              "displayName": "Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b11d5cba-2983-4412-8e15-a6e2d7a7342b",
+      "name": "Update row in sheet2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -592,
+        656
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1744657339,
+          "mode": "list",
+          "cachedResultName": "Reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=1744657339"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerEmail": "={{ $json.CustomerEmail }}",
+            "Response": "Negative"
+          },
+          "matchingColumns": [
+            "CustomerEmail"
+          ],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CustomerEmail",
+              "displayName": "CustomerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ReviewText",
+              "displayName": "ReviewText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Rating",
+              "displayName": "Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "36eb4422-94a5-4176-b80e-9ad2d19f37a3",
+      "name": "Update row in sheet3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -592,
+        848
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-subject-1",
+              "name": "EmailSubject",
+              "type": "string",
+              "value": "=We're sorry, {{ $json.CustomerName }} - let's make it right"
+            },
+            {
+              "id": "field-body-1",
+              "name": "EmailBody",
+              "type": "string",
+              "value": "=Hi {{ $json.CustomerName }},\n\nWe're sorry to hear your experience didn't meet expectations. Your feedback matters and our manager will personally follow up with you shortly.\n\nSincerely,\nThe Team"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "120a8dc8-f2e9-4488-b2b8-3a6e5470ce08",
+      "name": "Edit Fields3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -352,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c7b39e8a-5940-4f33-bc8d-8d014ed9b1de",
+      "name": "Loop Over Items3",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -128,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 83081995,
+          "mode": "list",
+          "cachedResultName": "ActionLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=83081995"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerName": "={{ $json.CustomerName }}",
+            "Sentiment": "Negative",
+            "Action": "Manager notified + apology email sent",
+            "Timestamp": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action",
+              "displayName": "Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "200bfe74-0868-45bd-8e6c-d604cd482d4d",
+      "name": "Append row in sheet3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        128,
+        960
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "=New review received!\nCustomer: {{ $('Customer Review Form').item.json['Customer Name'] }}\nEmail: {{ $('Customer Review Form').item.json['Customer Email'] }}\nReview: {{ $('Customer Review Form').item.json['Review Text'] }}",
+        "additionalFields": {}
+      },
+      "id": "1a68c1f2-c5f6-4c70-8501-2f6f71bb84ed",
+      "name": "Send a text message1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        944,
+        624
+      ],
+      "webhookId": "6d2bfc41-f636-46ea-b1cd-39185e062703",
+      "credentials": {
+        "telegramApi": {
+          "id": "jro9zB6WQ3FhOvNq",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.CustomerEmail }}",
+        "subject": "={{ $json.EmailSubject }}",
+        "message": "={{ $json.EmailBody }}",
+        "options": {}
+      },
+      "id": "16995892-f234-46da-bb7c-dbe74d163312",
+      "name": "Send a message3",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        128,
+        1200
+      ],
+      "webhookId": "575bcc51-acf8-49bd-83a8-a653c4d1dea8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PBU9LenxOte8a5w0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ $randomInt(20, 90) }}"
+      },
+      "id": "f3aa27dd-1517-4257-b508-14afe9738db1",
+      "name": "Wait1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        384,
+        1200
+      ],
+      "webhookId": "63bf9fb6-eb06-4d6a-9d18-3a09dac027b6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-subject",
+              "name": "EmailSubject",
+              "type": "string",
+              "value": "=Thank you for your feedback, {{ $json.CustomerName }}!"
+            },
+            {
+              "id": "field-body",
+              "name": "EmailBody",
+              "type": "string",
+              "value": "=Hi {{ $json.CustomerName }},\n\nThank you so much for the wonderful review! We're thrilled you enjoyed your experience with us and we hope to see you again soon.\n\nWarm regards,\nThe Team"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1c1e591-02c7-4dcf-9b47-f6162cb4bb88",
+      "name": "Edit Fields4",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -368,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "46d9f21d-5e0d-40f8-8413-e82e4f4c18d3",
+      "name": "Loop Over Items4",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -176,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 83081995,
+          "mode": "list",
+          "cachedResultName": "ActionLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=83081995"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerName": "={{ $json.CustomerName }}",
+            "Sentiment": "Negative",
+            "Action": "Manager notified + apology email sent",
+            "Timestamp": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action",
+              "displayName": "Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9d964662-407f-43b3-90a9-22bf4dba97af",
+      "name": "Append row in sheet4",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        64,
+        560
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.CustomerEmail }}",
+        "subject": "={{ $json.EmailSubject }}",
+        "message": "={{ $json.EmailBody }}",
+        "options": {}
+      },
+      "id": "bd4c6ba9-af9a-4409-8bbb-f1c608cb2cae",
+      "name": "Send a message4",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        736
+      ],
+      "webhookId": "575bcc51-acf8-49bd-83a8-a653c4d1dea8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PBU9LenxOte8a5w0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4",
+          "mode": "list",
+          "cachedResultName": "restuarant.reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1744657339,
+          "mode": "list",
+          "cachedResultName": "Reviews",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gF2WsUsUcQS-0fKoXmNkHG5g8lhxYCkOcUnGPGxJ7g4/edit#gid=1744657339"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CustomerName": "={{ $json['Customer Name'] }}",
+            "CustomerEmail": "={{ $json['Customer Email'] }}",
+            "ReviewText": "={{ $json['Review Text'] }}",
+            "Rating": "={{ $json.Rating }}",
+            "Response": "={{ $json.Response }}"
+          },
+          "matchingColumns": [
+            "Rating"
+          ],
+          "schema": [
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CustomerEmail",
+              "displayName": "CustomerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ReviewText",
+              "displayName": "ReviewText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rating",
+              "displayName": "Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "8ff7504d-b03e-4ff5-8f41-b970595356f2",
+      "name": "Append row in sheet5",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1056,
+        656
+      ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Customer Review Form": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "update_to_positive1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_to_positive1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items2": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Append row in sheet2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items3": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Append row in sheet3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet3": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message3": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items4": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Append row in sheet4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message4": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet4": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet5": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "96ad01c3-3b99-49a6-90c9-6983f975f858",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7ac927fd6729cb7c986104663781029f868887749f7b3e56e365e50e3214cc18"
+  },
+  "nodeGroups": [],
+  "id": "RrShOsrOi2WQ8dcq",
+  "tags": []
+}

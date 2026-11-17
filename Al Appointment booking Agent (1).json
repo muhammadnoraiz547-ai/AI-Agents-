@@ -1,0 +1,752 @@
+{
+  "name": "Al Appointment booking Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appzNEpjtUHook225",
+          "mode": "list",
+          "cachedResultName": "Clinic Patients"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEKD41NwB6ixmtW",
+          "mode": "list",
+          "cachedResultName": "Table 1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Phone": "={{ $('⚙️ Normalize Data').item.json.phone }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        16
+      ],
+      "id": "570eff13-bae6-42a6-b2b2-4b4486cfb113",
+      "name": "✏️ Update Patient",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        528
+      ],
+      "id": "b9460649-4565-4bcd-8b97-44a0e5c065c9",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "formTitle": "Book Your Appointment",
+        "formDescription": "Fill in your details and we will confirm your appointment shortly.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "placeholder": "Enter your full name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "placeholder": "Enter your email address",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Phone",
+              "placeholder": "e.g. 03001234567",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Preferred Date",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "placeholder": "Describe your reason for visit",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -1584,
+        176
+      ],
+      "id": "f757af1d-d204-4051-828f-67899b088595",
+      "name": "📋 Appointment Form",
+      "webhookId": "d4cc20a2-2329-44b3-88ab-1f5691815aee"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "name",
+              "value": "={{ $json.Name }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "email",
+              "value": "={{ $json.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "phone",
+              "value": "={{ $json.Phone }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "preferred_date",
+              "value": "={{ $json['Preferred Date'] }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "message",
+              "value": "={{ $json.Message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        176
+      ],
+      "id": "f88dab0c-0d07-4fcf-b7c3-66423b3ce0cb",
+      "name": "⚙️ Normalize Data"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appzNEpjtUHook225",
+          "mode": "list",
+          "cachedResultName": "Clinic Patients"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEKD41NwB6ixmtW",
+          "mode": "list",
+          "cachedResultName": "Table 1"
+        },
+        "filterByFormula": "={Email} = '{{ $json.email }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1104,
+        176
+      ],
+      "id": "fc7488ba-309c-4151-9afc-88ff79021d12",
+      "name": "🔍 Check Existing Patient",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.id ?? 'empty' }}",
+              "rightValue": "empty",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -864,
+        176
+      ],
+      "id": "4d40fa8f-ed12-47a8-9df7-681fdc554f14",
+      "name": "🔀 Patient Exists?",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appzNEpjtUHook225",
+          "mode": "list",
+          "cachedResultName": "Clinic Patients"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEKD41NwB6ixmtW",
+          "mode": "list",
+          "cachedResultName": "Table 1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('⚙️ Normalize Data').item.json.name }}",
+            "Email": "={{ $('⚙️ Normalize Data').item.json.email }}",
+            "Phone": "={{ $('⚙️ Normalize Data').item.json.phone }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        336
+      ],
+      "id": "018dcca3-3515-43ed-9369-6813ae475795",
+      "name": "➕ Create New Patient",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "muhammadnoraiz547@gmail.com",
+          "mode": "list",
+          "cachedResultName": "muhammadnoraiz547@gmail.com"
+        },
+        "start": "={{ $('⚙️ Normalize Data').item.json.preferred_date }}",
+        "end": "={{ $('⚙️ Normalize Data').item.json.preferred_date }}",
+        "additionalFields": {
+          "description": "=Patient: {{ $('⚙️ Normalize Data').item.json.name }}\nEmail: {{ $('⚙️ Normalize Data').item.json.email }}\nPhone: {{ $('⚙️ Normalize Data').item.json.phone }}\nReason: {{ $('⚙️ Normalize Data').item.json.message }}",
+          "summary": "=🏥 Appointment - {{ $('⚙️ Normalize Data').item.json.name }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        176
+      ],
+      "id": "cc19f712-2e3b-4b48-9428-762028ddaf8e",
+      "name": "📅 Book Appointment",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "CBQYxkRlZF0LiVxo",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('⚙️ Normalize Data').item.json.email }}",
+        "subject": "=✅ Appointment Confirmed - {{ $('⚙️ Normalize Data').item.json.preferred_date.split('T')[0] }}",
+        "message": "=<h2>Dear {{ $('⚙️ Normalize Data').item.json.name }},</h2><p>Your appointment has been successfully booked! 🎉</p><table style='border-collapse:collapse;width:100%'><tr><td style='padding:8px;border:1px solid #ddd'>📅 <b>Date</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.preferred_date.split('T')[0] }}</td></tr><tr><td style='padding:8px;border:1px solid #ddd'>📞 <b>Phone</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.phone }}</td></tr><tr><td style='padding:8px;border:1px solid #ddd'>💬 <b>Reason</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.message }}</td></tr></table><br><p>We look forward to seeing you!</p><p><b>Best regards,<br>Clinic Team</b></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        176
+      ],
+      "id": "f5e9e34a-04a9-403e-bedc-7aedaf9829c2",
+      "name": "📧 Send Confirmation to Patient",
+      "webhookId": "30bd3cfb-1d02-4379-bb58-e430a6fd6498",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pH5JcAUhhw30WhCy",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=🏥 New Appointment - {{ $('⚙️ Normalize Data').item.json.name }}",
+        "message": "=<h2>New Appointment Booked!</h2><table style='border-collapse:collapse;width:100%'><tr><td style='padding:8px;border:1px solid #ddd'>👤 <b>Patient</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.name }}</td></tr><tr><td style='padding:8px;border:1px solid #ddd'>📧 <b>Email</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.email }}</td></tr><tr><td style='padding:8px;border:1px solid #ddd'>📞 <b>Phone</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.phone }}</td></tr><tr><td style='padding:8px;border:1px solid #ddd'>📅 <b>Date</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.preferred_date.split('T')[0] }}</td></tr><tr><td style='padding:8px;border:1px solid #ddd'>💬 <b>Reason</b></td><td style='padding:8px;border:1px solid #ddd'>{{ $('⚙️ Normalize Data').item.json.message }}</td></tr></table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        176
+      ],
+      "id": "a114bd79-edde-46d8-a792-9ce9e4e787ef",
+      "name": "📨 Notify Clinic",
+      "webhookId": "ee377dcd-7a7c-480a-b7e7-98f7e82011e0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pH5JcAUhhw30WhCy",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appzNEpjtUHook225",
+          "mode": "list",
+          "cachedResultName": "Clinic Patients"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblA96XbKIMyjaE9m",
+          "mode": "list",
+          "cachedResultName": "Appointments"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Patient Name": "={{ $('⚙️ Normalize Data').item.json.name }}",
+            "Email": "={{ $('⚙️ Normalize Data').item.json.email }}",
+            "Phone": "={{ $('⚙️ Normalize Data').item.json.phone }}",
+            "Appointment Date": "={{ $('⚙️ Normalize Data').item.json.preferred_date.split('T')[0] }}",
+            "Status": "Booked",
+            "Notes": "={{ $('⚙️ Normalize Data').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Appointment Date",
+              "displayName": "Appointment Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        176
+      ],
+      "id": "864c2fb0-fe23-4cf2-b640-cff9e34812d2",
+      "name": "📝 Log Booking",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appzNEpjtUHook225",
+          "mode": "list",
+          "cachedResultName": "Clinic Patients"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblUw6lpm72QquW4Z",
+          "mode": "list",
+          "cachedResultName": "Error Logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Error Message": "={{ $('Error Trigger').item.json.execution.error.message }}",
+            "Node Name": "={{ $('Error Trigger').item.json.execution.lastNodeExecuted }}",
+            "Time": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Node Name",
+              "displayName": "Node Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1072,
+        528
+      ],
+      "id": "64e70151-7b91-4039-bf7e-8738854d50f2",
+      "name": "📋 Log Error Details",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJGMENQB1",
+          "mode": "list",
+          "cachedResultName": "complain"
+        },
+        "text": "=⚠️ Error in Appointment Workflow!\nNode: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\nTime: {{ $now }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "position": [
+        -1312,
+        528
+      ],
+      "id": "6562e172-5a72-4f9c-b39d-4164d88dd621",
+      "name": "🔔 Error Notification",
+      "webhookId": "d10de50b-0d26-4fb5-9bb4-886d9e43f757",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hKE71XwhsCATGpE1",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "✏️ Update Patient": {
+      "main": [
+        [
+          {
+            "node": "📅 Book Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "🔔 Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Appointment Form": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "🔍 Check Existing Patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Check Existing Patient": {
+      "main": [
+        [
+          {
+            "node": "🔀 Patient Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Patient Exists?": {
+      "main": [
+        [
+          {
+            "node": "✏️ Update Patient",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "➕ Create New Patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "➕ Create New Patient": {
+      "main": [
+        [
+          {
+            "node": "📅 Book Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📅 Book Appointment": {
+      "main": [
+        [
+          {
+            "node": "📧 Send Confirmation to Patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Send Confirmation to Patient": {
+      "main": [
+        [
+          {
+            "node": "📨 Notify Clinic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Notify Clinic": {
+      "main": [
+        [
+          {
+            "node": "📝 Log Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔔 Error Notification": {
+      "main": [
+        [
+          {
+            "node": "📋 Log Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5658800f-eca6-4fab-8010-254968175039",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aaea7183e39683ce155401f4fda51255a8820d25184b8a19d6242f7839f567bb"
+  },
+  "nodeGroups": [],
+  "id": "cRHwlq25HewPTeb3",
+  "tags": []
+}

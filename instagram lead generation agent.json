@@ -1,0 +1,226 @@
+{
+  "name": "instagram lead generation agent",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "instagram lead scarpper",
+        "formDescription": "get all the reels from instagram directly to airtable",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "who are you looking for?"
+            },
+            {
+              "fieldLabel": "location"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "244f155c-4659-4f5b-9320-a0fa5550ca88",
+      "name": "On form submission",
+      "webhookId": "ad532039-4451-4ef7-ac6e-97550ca29da2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=YOUR_APIFY_API_TOKEN",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"chatGptSearch\": {\n        \"enableChatGpt\": false\n    },\n    \"focusOnPaidAds\": false,\n    \"forceExactMatch\": false,\n    \"includeIcons\": false,\n    \"includeUnfilteredResults\": false,\n    \"maxPagesPerQuery\": 10,\n    \"maximumLeadsEnrichmentRecords\": 0,\n    \"mobileResults\": false,\n    \"perplexitySearch\": {\n        \"enablePerplexity\": false,\n        \"returnImages\": false,\n        \"returnRelatedQuestions\": false\n    },\n    \"queries\": \"site:instagram.com + {{ $json['who are you looking for?'] }}  {{ $json.location }}   \",\n    \"resultsPerPage\": 50,\n    \"saveHtml\": false,\n    \"saveHtmlToKeyValueStore\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "fad20a3a-dada-4396-b588-b684e4f40b5e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "8477a79b-4390-4284-8481-bb8388fd68a8",
+      "name": "Wait",
+      "webhookId": "23cb77bb-3f28-40d6-bc4d-71c6c7ec3f43"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allResults = [];\n\nitems.forEach(item => {\n  const results = item.json.organicResults || [];\n  results.forEach(r => {\n    allResults.push({\n      channelName: r.channelName || null,\n      followers: r.followersAmount || null,\n      type: r.type || null,\n      position: r.position || null\n    });\n  });\n});\n\nreturn allResults.map(i => ({ json: i }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "6cd6e4e2-9fa5-41c7-b48d-91cbb61bf736",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appdVJ2EcyV5n7mzT",
+          "mode": "list",
+          "cachedResultName": "leads gens",
+          "cachedResultUrl": "https://airtable.com/appdVJ2EcyV5n7mzT"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblL1UzeGsqNu0jiN",
+          "mode": "list",
+          "cachedResultName": "dentist",
+          "cachedResultUrl": "https://airtable.com/appdVJ2EcyV5n7mzT/tblL1UzeGsqNu0jiN"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "channelName": "={{ $json.channelName }}",
+            "followers": "={{ $json.followers }}",
+            "type": "={{ $json.type }}",
+            "position": "={{ $json.position }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "channelName",
+              "displayName": "channelName",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "followers",
+              "displayName": "followers",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "5510ef36-f70f-420e-a52b-8eb52bc90086",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "LFHqLIgM6pNDULqV",
+          "name": "Airtable Personal Access Token account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "418f9ccc-e3b3-46a5-9af7-ac139264e180",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2bc775e73781549d1441319a643274eb678f139d0499fe5fe42cb7f083e3742d"
+  },
+  "id": "KLW566L8VBWiDCiy",
+  "tags": []
+}

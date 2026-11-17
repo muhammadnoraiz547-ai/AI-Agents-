@@ -1,0 +1,1938 @@
+{
+  "name": "Ecommerce Master AI Automation System",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6f2da3ab-8bc1-45d9-9d31-30b2bbbc86d7",
+      "name": "MASTER - Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1696,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// SELECT: 'ALL' runs all 9 test events, or choose one: order_created | low_inventory | customer_message |\n// return_requested | cart_abandoned | competitor_price_changed | negative_review_detected | sales_anomaly | daily_business_review\nconst SELECT = 'ALL';\n// Set true to send every event twice and watch the idempotency / duplicate path\nconst SEND_DUPLICATES = false;\nconst T = {\n order_created: {eventType:'order_created', source:'shopify', customerId:'C-2001', orderId:'O-5001', sku:'WEB-PRO-BLK', productId:'P-1001',\n   payload:{total:149.97, currency:'USD', paymentStatus:'PAID', items:[{sku:'WEB-PRO-BLK', qty:3, price:49.99}]}},\n low_inventory: {eventType:'low_inventory', source:'amazon', sku:'WEB-PRO-BLK', productId:'P-1001',\n   payload:{currentStock:140, threshold:400, marketplace:'amazon'}},\n customer_message: {eventType:'customer_message', source:'generic', customerId:'C-2001',\n   payload:{channel:'email', message:'Hi, where is my order O-5003? It was supposed to arrive yesterday.'}},\n return_requested: {eventType:'return_requested', source:'shopify', customerId:'C-2002', orderId:'O-5002',\n   payload:{reason:'Changed my mind', condition:'unopened', requestedResolution:'refund', refundAmount:24.99}},\n cart_abandoned: {eventType:'cart_abandoned', source:'shopify', customerId:'C-2003',\n   payload:{cartValue:129.9, minutesSinceAbandon:95, consent:{email:true, sms:false}, items:[{sku:'WEB-PRO-BLK', qty:2, price:49.99},{sku:'EAR-TIPS-SET', qty:1, price:29.92}]}},\n competitor_price_changed: {eventType:'competitor_price_changed', source:'amazon', sku:'YOGA-MAT-PRM', productId:'P-1003',\n   payload:{competitor:'Seller-X', previousCompetitorPrice:31.49, competitorPrice:27.49}},\n negative_review_detected: {eventType:'negative_review_detected', source:'amazon', sku:'WEB-PRO-BLK', productId:'P-1001',\n   payload:{reviewId:'R-9001', rating:1, text:'Battery died after two days and support never replied. Very disappointed.'}},\n sales_anomaly: {eventType:'sales_anomaly', source:'generic',\n   payload:{metric:'revenue', period:'today', question:'Why did sales fall?'}},\n daily_business_review: {eventType:'daily_business_review', source:'generic',\n   payload:{question:'What needs my attention today?'}}\n};\nconst now = new Date().toISOString();\nconst keys = SELECT === 'ALL' ? Object.keys(T) : [SELECT];\nconst out = [];\nfor (const k of keys) {\n  const ev = {...T[k], eventId:'test-' + k + '-001', timestamp: now};\n  out.push({json: ev});\n  if (SEND_DUPLICATES) out.push({json: {...ev}});\n}\nreturn out;"
+      },
+      "id": "a4b0445d-998c-4cc0-929f-31ce45903410",
+      "name": "MASTER - Test Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ecom-master-event",
+        "options": {}
+      },
+      "id": "4c909928-b845-4f6f-b328-becd396b41d2",
+      "name": "MASTER - Webhook Event Ingest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1696,
+        1328
+      ],
+      "webhookId": "bd9c66b3-ad3c-4d6d-9a3d-1fa7bc8960a9"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "79e9553a-f42c-425b-8010-5fb6f16807f5",
+      "name": "MASTER - Daily Review Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1696,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = new Date();\nconst day = d.toISOString().slice(0,10);\nconst out = [{json:{eventType:'daily_business_review', source:'schedule', eventId:'daily-' + day, timestamp:d.toISOString(), payload:{question:'What needs my attention today?'}}}];\nif (d.getUTCDay() === 1) out.push({json:{eventType:'weekly_business_review', source:'schedule', eventId:'weekly-' + day, timestamp:d.toISOString(), payload:{question:'How did the week go?'}}});\nreturn out;"
+      },
+      "id": "bcb526df-865a-49bc-be3b-7a894d647417",
+      "name": "MASTER - Scheduled Review Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ====== CENTRAL CONFIG (edit here) ======\nconst CONFIG = {\n  aiEnabled: false,                 // true => agents call the LLM node; false => deterministic rules only (works with no credentials)\n  aiModel: 'REPLACE_WITH_MODEL_NAME',\n  dryRun: true,                     // true => no external API call is ever made; actions are only simulated and logged\n  simulateApproval: false,          // true => test mode auto-approves pending approvals so you can see execution end-to-end\n  lowConfidenceThreshold: 0.6,      // below this, non-passive actions go to human approval\n  maxAutoDiscountPct: 10,           // larger discounts always need approval\n  autoApproveReturns: false,        // financial actions need approval by default\n  highValueOrderThreshold: 500,\n  idempotencyTtlHours: 72,\n  currency: 'USD'\n};\nconst MODULES = {\"product\": [\"product_created\", \"product_updated\", \"product_research_requested\"], \"listing\": [\"listing_generation_requested\", \"listing_optimization_requested\"], \"order\": [\"order_created\", \"order_updated\", \"payment_failed\", \"order_cancelled\", \"order_delayed\"], \"inventory\": [\"inventory_updated\", \"low_inventory\", \"stockout_risk\", \"overstock_risk\", \"dead_stock_detected\"], \"pricing\": [\"price_check_requested\", \"competitor_price_changed\", \"margin_risk\"], \"customer\": [\"customer_created\", \"vip_customer_detected\"], \"support\": [\"customer_message\", \"customer_complaint\"], \"review\": [\"review_received\", \"negative_review_detected\"], \"returns\": [\"return_requested\", \"refund_requested\", \"exchange_requested\", \"return_risk\"], \"revenue\": [\"cart_abandoned\", \"checkout_abandoned\", \"customer_inactive\", \"repeat_purchase_opportunity\"], \"profit\": [\"profit_anomaly\"], \"analyst\": [\"sales_anomaly\", \"revenue_drop\", \"high_return_rate\", \"high_ad_spend\"], \"coo\": [\"daily_business_review\", \"weekly_business_review\"], \"exception\": [\"order_exception\", \"unknown_event\"]};\nconst KNOWN = [].concat(...Object.values(MODULES));\nconst PII_KEYS = ['name','firstName','lastName','email','phone','address','shippingAddress','billingAddress','customerName','customerEmail','ip'];\nconst scrub = s => typeof s === 'string' ? s.replace(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/g,'[email]').replace(/\\+?\\d[\\d\\s().-]{8,}\\d/g,'[phone]') : s;\nconst redact = o => Array.isArray(o) ? o.map(redact) : (o && typeof o === 'object') ? Object.fromEntries(Object.entries(o).filter(([k]) => !PII_KEYS.includes(k)).map(([k,v]) => [k, redact(v)])) : scrub(o);\ntry {\n  const j = $json;\n  const raw = (j.body && typeof j.body === 'object') ? j.body : j;\n  const hdr = j.headers || {};\n  const src = String(raw.source || hdr['x-source'] || 'generic').toLowerCase();\n  const TOPICS = {'orders/create':'order_created','orders/updated':'order_updated','orders/cancelled':'order_cancelled','products/create':'product_created','products/update':'product_updated','customers/create':'customer_created','refunds/create':'refund_requested','inventory_levels/update':'inventory_updated','checkouts/create':'checkout_abandoned','ORDER_CHANGE':'order_updated','ANY_OFFER_CHANGED':'competitor_price_changed','LISTINGS_ITEM_STATUS_CHANGE':'product_updated','ORDER.CREATED':'order_created','ORDER.CANCELLED':'order_cancelled','ITEM.SOLD':'order_created','RETURN.CREATED':'return_requested'};\n  const topic = raw.topic || raw.notificationType || hdr['x-shopify-topic'];\n  let eventType = String(raw.eventType || TOPICS[topic] || '').trim();\n  const errors = [];\n  if (!eventType) errors.push('missing eventType');\n  else if (!KNOWN.includes(eventType)) errors.push('unrecognised eventType: ' + eventType);\n  if (errors.length) eventType = 'unknown_event';\n  const p = (raw.payload && typeof raw.payload === 'object') ? raw.payload : raw;\n  const pick = (...keys) => { for (const k of keys) { const v = p[k] !== undefined ? p[k] : raw[k]; if (v !== undefined && v !== null && v !== '' && typeof v !== 'object') return String(v); } return ''; };\n  const ts = String(raw.timestamp || new Date().toISOString());\n  const customerId = pick('customerId','customer_id') || (p.customer && p.customer.id ? String(p.customer.id) : '');\n  const orderId = pick('orderId','order_id','AmazonOrderId') || (eventType.startsWith('order') ? pick('id') : '');\n  const productId = pick('productId','product_id','asin','itemId');\n  const sku = pick('sku','SKU','sellerSku');\n  const hookId = hdr['x-shopify-event-id'] || hdr['x-shopify-webhook-id'] || '';\n  const eventId = String(raw.eventId || hookId || ['evt', src, eventType, orderId || productId || customerId || sku || 'na', ts].join('-')).replace(/\\s+/g, '');\n  // ---- idempotency (replace static data with a DB table / Redis in production)\n  const sd = $getWorkflowStaticData('global');\n  sd.seen = sd.seen || {};\n  const now = Date.now(), ttl = CONFIG.idempotencyTtlHours * 3600000;\n  for (const k of Object.keys(sd.seen)) if (now - sd.seen[k] > ttl) delete sd.seen[k];\n  const isDuplicate = !!sd.seen[eventId] && !(raw.metadata && raw.metadata.allowDuplicate);\n  if (!isDuplicate) sd.seen[eventId] = now;\n  const event = {eventId, eventType, source: src, timestamp: ts, customerId, orderId, productId, sku, payload: p,\n    metadata: {...(raw.metadata || {}), depth: Number((raw.metadata && raw.metadata.depth) || 0), receivedAt: new Date().toISOString(), validationErrors: errors}};\n  const exceptions = errors.length ? [{type:'VALIDATION', severity:'LOW', source:'MASTER - Normalize Event', message: errors.join('; ')}] : [];\n  return {json:{event, aiSafe: redact(event), config: CONFIG, isDuplicate, exceptions}};\n} catch (err) {\n  const event = {eventId:'evt-err-' + Date.now(), eventType:'unknown_event', source:'unknown', timestamp:new Date().toISOString(), customerId:'', orderId:'', productId:'', sku:'', payload:{}, metadata:{depth:0, validationErrors:[String(err && err.message)]}};\n  return {json:{event, aiSafe:event, config:CONFIG, isDuplicate:false, exceptions:[{type:'NORMALIZATION_FAILURE', severity:'HIGH', source:'MASTER - Normalize Event', message:String(err && err.message), recommendedAction:'Inspect the inbound payload'}]}};\n}"
+      },
+      "id": "a959c169-ae1d-4c8c-bf4a-585c5b66e660",
+      "name": "MASTER - Normalize Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6b65a6a4-8b81-48f6-b38a-088ca65ed389",
+              "leftValue": "={{ String($json.isDuplicate === true) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "1e905cca-b9f4-48cc-8350-0e98d53cb32d",
+      "name": "MASTER - Duplicate Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -928,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst M = {\"product\": [\"product_created\", \"product_updated\", \"product_research_requested\"], \"listing\": [\"listing_generation_requested\", \"listing_optimization_requested\"], \"order\": [\"order_created\", \"order_updated\", \"payment_failed\", \"order_cancelled\", \"order_delayed\"], \"inventory\": [\"inventory_updated\", \"low_inventory\", \"stockout_risk\", \"overstock_risk\", \"dead_stock_detected\"], \"pricing\": [\"price_check_requested\", \"competitor_price_changed\", \"margin_risk\"], \"customer\": [\"customer_created\", \"vip_customer_detected\"], \"support\": [\"customer_message\", \"customer_complaint\"], \"review\": [\"review_received\", \"negative_review_detected\"], \"returns\": [\"return_requested\", \"refund_requested\", \"exchange_requested\", \"return_risk\"], \"revenue\": [\"cart_abandoned\", \"checkout_abandoned\", \"customer_inactive\", \"repeat_purchase_opportunity\"], \"profit\": [\"profit_anomaly\"], \"analyst\": [\"sales_anomaly\", \"revenue_drop\", \"high_return_rate\", \"high_ad_spend\"], \"coo\": [\"daily_business_review\", \"weekly_business_review\"], \"exception\": [\"order_exception\", \"unknown_event\"]};\nconst t = $json.event.eventType;\nconst module = Object.keys(M).find(k => M[k].includes(t)) || 'exception';\nreturn {json:{...$json, module}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"MASTER - Classify Event\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "2dae996f-3e06-4eae-96ce-506e7bbbdd8a",
+      "name": "MASTER - Classify Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\n// MOCK DATA LAYER: replace this node with Google Sheets / Postgres / Shopify / Amazon / eBay lookups.\n// Keep the output shape (context.order, customer, product, inventory, lines, policy, metrics, missing).\nconst e = $json.event, M = $json.module;\nconst F = {marketplacePct:0.15, paymentPct:0.029, paymentFixed:0.3};\nconst DB = {\n products: {\n  'P-1001': {productId:'P-1001', sku:'WEB-PRO-BLK', title:'Wireless Earbuds Pro (Black)', category:'Electronics', cost:18.5, price:49.99, shippingCost:4.2, targetMargin:0.30, fees:F, rating:4.1},\n  'P-1002': {productId:'P-1002', sku:'BOT-STL-1L', title:'Stainless Steel Water Bottle 1L', category:'Home & Outdoor', cost:6.2, price:24.99, shippingCost:3.8, targetMargin:0.35, fees:F, rating:4.6},\n  'P-1003': {productId:'P-1003', sku:'YOGA-MAT-PRM', title:'Premium Yoga Mat', category:'Fitness', cost:9, price:29.99, shippingCost:5.5, targetMargin:0.30, fees:F, rating:4.3},\n  'P-1004': {productId:'P-1004', sku:'LAMP-DSK-WHT', title:'Desk Lamp (White)', category:'Home Office', cost:11, price:34.99, shippingCost:4.9, targetMargin:0.30, fees:F, rating:4.0}\n },\n inventory: {\n  'WEB-PRO-BLK': {currentStock:140, pendingOrders:90, salesVelocityPerDay:60, seasonalityIndex:1.2, supplierLeadTimeDays:12, reorderThreshold:400, lastSaleDaysAgo:0, historicalDailySales:[52,58,61,57,60,63,59]},\n  'BOT-STL-1L': {currentStock:2500, pendingOrders:150, salesVelocityPerDay:75, seasonalityIndex:1, supplierLeadTimeDays:20, reorderThreshold:800, lastSaleDaysAgo:0, historicalDailySales:[70,74,77,73,76,75,75]},\n  'YOGA-MAT-PRM': {currentStock:3000, pendingOrders:20, salesVelocityPerDay:20, seasonalityIndex:1, supplierLeadTimeDays:25, reorderThreshold:400, lastSaleDaysAgo:0, historicalDailySales:[19,21,20,18,22,20,20]},\n  'LAMP-DSK-WHT': {currentStock:220, pendingOrders:0, salesVelocityPerDay:0, seasonalityIndex:1, supplierLeadTimeDays:30, reorderThreshold:40, lastSaleDaysAgo:140, historicalDailySales:[0,0,0,0,0,0,0]}\n },\n customers: {\n  'C-2001': {customerId:'C-2001', name:'Ayesha Khan', email:'ayesha@example.com', phone:'+1 555 010 2001', orders:5, lifetimeValue:640, avgOrderValue:128, returns:0, complaints:0, lastOrderDaysAgo:12},\n  'C-2002': {customerId:'C-2002', name:'Daniel Brooks', email:'daniel@example.com', phone:'+1 555 010 2002', orders:22, lifetimeValue:4200, avgOrderValue:191, returns:1, complaints:0, lastOrderDaysAgo:5},\n  'C-2003': {customerId:'C-2003', name:'Sam Lee', email:'sam@example.com', phone:'+1 555 010 2003', orders:0, lifetimeValue:0, avgOrderValue:0, returns:0, complaints:0, lastOrderDaysAgo:999},\n  'C-2004': {customerId:'C-2004', name:'Maria Gomez', email:'maria@example.com', phone:'+1 555 010 2004', orders:8, lifetimeValue:900, avgOrderValue:112, returns:4, complaints:2, lastOrderDaysAgo:160}\n },\n orders: {\n  'O-5001': {orderId:'O-5001', customerId:'C-2001', status:'PAID', paymentStatus:'PAID', total:149.97, currency:'USD', items:[{sku:'WEB-PRO-BLK', qty:3, price:49.99}], shipTo:{country:'US', address:'12 Example St'}, shipment:null, deliveredDaysAgo:null},\n  'O-5002': {orderId:'O-5002', customerId:'C-2002', status:'DELIVERED', paymentStatus:'PAID', total:24.99, currency:'USD', items:[{sku:'BOT-STL-1L', qty:1, price:24.99}], shipTo:{country:'US', address:'98 Sample Ave'}, shipment:{carrier:'UPS', trackingNumber:'1Z999TEST0002', status:'DELIVERED', eta:'2026-09-27'}, deliveredDaysAgo:6},\n  'O-5003': {orderId:'O-5003', customerId:'C-2001', status:'SHIPPED', paymentStatus:'PAID', total:49.99, currency:'USD', items:[{sku:'WEB-PRO-BLK', qty:1, price:49.99}], shipTo:{country:'US', address:'12 Example St'}, shipment:{carrier:'UPS', trackingNumber:'1Z999TEST0003', status:'IN_TRANSIT', eta:'2026-10-07'}, deliveredDaysAgo:null}\n },\n policies: {returnWindowDays:30, autoApproveReturnBelow:25, standardShipping:'5-7 business days', refundsNeedApproval:true},\n reviewPatterns: {'WEB-PRO-BLK': {windowDays:30, reviews:140, avgRating:3.4, previousAvgRating:4.2, topics:{battery:19, shipping:6, support:9}}}\n};\nconst METRICS = {\n date:'2026-10-03',\n today:{orders:84, revenue:5423.45, grossProfit:3686.95, netProfit:400.45, adSpend:1105, refunds:240, returnsCount:9, conversionRate:0.0168, sessions:5000},\n baseline7d:{orders:121, revenue:8120, netProfit:1510, adSpend:960, conversionRate:0.0245, sessions:4900, returnRate:0.04},\n productPnL:[\n  {sku:'WEB-PRO-BLK', revenue:2949.4, cogs:1091.5, marketplaceFees:442.4, paymentFees:94.2, shipping:247.8, ads:640, discounts:120, refunds:150, returnCost:60},\n  {sku:'BOT-STL-1L', revenue:1874.25, cogs:465, marketplaceFees:281.1, paymentFees:62, shipping:285, ads:180, discounts:0, refunds:40, returnCost:10},\n  {sku:'YOGA-MAT-PRM', revenue:599.8, cogs:180, marketplaceFees:90, paymentFees:19, shipping:140, ads:285, discounts:60, refunds:50, returnCost:30}\n ],\n inventoryRisks:[{sku:'WEB-PRO-BLK', type:'STOCKOUT_RISK', daysOfCover:0.7},{sku:'YOGA-MAT-PRM', type:'OVERSTOCK', daysOfCover:149},{sku:'LAMP-DSK-WHT', type:'DEAD_STOCK', daysOfCover:null}],\n competitorChanges:[{sku:'WEB-PRO-BLK', competitorPrice:42.99, ourPrice:49.99, changedHoursAgo:20}],\n returns:{count:9, rate:0.107, topSku:'WEB-PRO-BLK', topReason:'Not as described'},\n reviews:{count:18, avgRating:3.6, negative:7, topIssue:'battery life (WEB-PRO-BLK)'},\n support:{open:23, unresolvedOver24h:6, complaints:5},\n customersAtRisk:[{customerId:'C-2004', note:'8 orders, 4 returns, 2 complaints, inactive 160 days'},{customerId:'C-2002', note:'VIP customer with a support ticket open over 24h'}]\n};\nconst PII_KEYS = ['name','firstName','lastName','email','phone','address','shippingAddress','billingAddress','customerName','customerEmail','ip'];\nconst scrub = s => typeof s === 'string' ? s.replace(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/g,'[email]').replace(/\\+?\\d[\\d\\s().-]{8,}\\d/g,'[phone]') : s;\nconst redact = o => Array.isArray(o) ? o.map(redact) : (o && typeof o === 'object') ? Object.fromEntries(Object.entries(o).filter(([k]) => !PII_KEYS.includes(k)).map(([k,v]) => [k, redact(v)])) : scrub(o);\nconst prods = Object.values(DB.products);\nconst msg = (e.payload && typeof e.payload.message === 'string') ? e.payload.message : '';\nconst resolvedOrderId = e.orderId || ((msg.match(/O-\\d{4,}/i) || [])[0] || '').toUpperCase();\nconst order = DB.orders[resolvedOrderId] || null;\nconst customerId = e.customerId || (order && order.customerId) || '';\nconst customer = DB.customers[customerId] || null;\nconst items = (order && order.items) || (e.payload && e.payload.items) || [];\nconst lines = items.map(i => ({sku:i.sku, qty:i.qty, price:i.price, product: prods.find(p => p.sku === i.sku) || null, inventory: DB.inventory[i.sku] || null}));\nconst product = prods.find(p => (e.sku && p.sku === e.sku) || (e.productId && p.productId === e.productId)) || (lines[0] && lines[0].product) || null;\nconst sku = e.sku || (product && product.sku) || '';\nconst missing = [];\nif (['order','support','returns'].includes(M) && resolvedOrderId && !order) missing.push('order ' + resolvedOrderId);\nif (['customer','revenue','returns','support','order'].includes(M) && e.customerId && !customer) missing.push('customer ' + e.customerId);\nif (['inventory','pricing'].includes(M) && !DB.inventory[sku]) missing.push('inventory record for SKU ' + sku);\nconst context = {order, customer, product, inventory: DB.inventory[sku] || null, lines, policy: DB.policies, reviewPatterns: DB.reviewPatterns[sku] || null,\n  metrics: ['analyst','profit','coo'].includes(M) ? METRICS : null, resolvedOrderId, missing, dataSource:'MOCK (replace with Sheets/Postgres/API lookups)'};\nreturn {json:{...$json, context, aiSafeContext: redact(context)}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"MASTER - Load Context\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "c2951dac-9019-43be-bf69-3e771b0fc4d2",
+      "name": "MASTER - Load Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "371ecd7b-27cd-4130-8722-9389571aa876",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "product",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "product"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1a2a73ed-562b-4f79-8374-59eef50bea63",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "listing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "listing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5be6128e-18c2-4797-a142-ea7d17be3111",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "order"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "43b7a3a6-9a8d-4a03-980d-7b71d8f56413",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "inventory",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "inventory"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "759cde66-bacf-43d0-8b1f-9163ce9ff57f",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "pricing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pricing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ec1b8ca1-f91e-4d4c-9ff4-9b7889463e85",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "customer",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "customer"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4b0dbb41-8d52-48f1-942c-3fe860e7a113",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "support"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e2acf72f-9e57-4f7a-a0ee-89aed453dd32",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "review"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3139d32c-93cd-49bf-9c94-1cf0dc98d2c1",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "returns",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "returns"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9488d99-0bbb-4599-91ce-5dd2b45ed1f0",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "revenue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "revenue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fc377a4c-4a15-444d-85e7-ce8a3a578a8e",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "profit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "profit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ddd1dfb2-3b98-4ef8-9af6-1a26146d3f31",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "analyst",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "analyst"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7412b293-4729-4739-a14f-f3d719db3ad0",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "coo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "coo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "29a3b2e9-5d65-4441-9588-42dea2bc372f",
+                    "leftValue": "={{ $json.module }}",
+                    "rightValue": "exception",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "exception"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "unrouted"
+        }
+      },
+      "id": "f72dfb15-f67d-4991-a5ca-c2e54c32a31e",
+      "name": "MASTER - Event Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Product Intelligence\", TASK = \"Analyse product opportunity: demand, competition, price, estimated margin, reviews, weaknesses, risks. Give an opportunityScore 0-100 and a recommendation (PURSUE, TEST_SMALL, PASS or NEED_MORE_DATA).\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst pr = c.product || {}, p = e.payload || {};\nconst price = Number(p.price ?? pr.price ?? 0), cost = Number(p.estimatedCost ?? pr.cost ?? 0);\nconst ship = Number(p.shippingCost ?? pr.shippingCost ?? 0);\nconst fees = price * 0.179 + 0.3 + ship;\nconst margin = price > 0 ? r2((price - cost - fees) / price) : 0;\nconst demand = Number(p.monthlySearchVolume || 0), comp = Number(p.competitorCount || 0);\nconst missing = [];\nif (!price) missing.push('price'); if (!cost) missing.push('cost'); if (!demand) missing.push('demand data');\nconst score = Math.max(0, Math.min(100, Math.round(40 + margin * 100 + (demand > 5000 ? 15 : demand > 1000 ? 8 : 0) - (comp > 100 ? 20 : comp > 30 ? 10 : 0) - missing.length * 8)));\nconst risks = [];\nif (price && margin < 0.15) risks.push('Thin margin'); if (comp > 100) risks.push('Highly competitive niche'); if (missing.length) risks.push('Missing data: ' + missing.join(', '));\nconst heur = {productId: e.productId || pr.productId || '', opportunityScore: score,\n  demandAssessment: demand ? (demand > 5000 ? 'HIGH' : demand > 1000 ? 'MEDIUM' : 'LOW') : 'UNKNOWN',\n  competitionAssessment: comp ? (comp > 100 ? 'HIGH' : comp > 30 ? 'MEDIUM' : 'LOW') : 'UNKNOWN',\n  estimatedMargin: margin, risks,\n  recommendation: missing.length >= 2 ? 'NEED_MORE_DATA' : score >= 65 ? 'PURSUE' : score >= 45 ? 'TEST_SMALL' : 'PASS',\n  reason: 'Estimated margin ' + Math.round(margin * 100) + '% after marketplace, payment and shipping costs; score ' + score + '.',\n  confidence: missing.length >= 2 ? 0.35 : missing.length ? 0.55 : 0.75};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "f3910451-180c-4c8c-8596-f8bd52bd3d77",
+      "name": "AGENT - Product Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Listing Intelligence\", TASK = \"Generate or optimise a marketplace-specific product listing (title, bullets, description, keywords, FAQ, SEO) and list missing information. Never publish; output is a draft.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst p = e.payload || {}, pr = c.product || {};\nconst mk = String(p.marketplace || e.source || 'shopify').toLowerCase();\nconst maxT = {amazon:200, ebay:80, shopify:70}[mk] || 80;\nconst base = String(p.title || pr.title || 'Product').trim();\nconst feats = Array.isArray(p.features) ? p.features : [];\nconst ex = p.existingListing || {};\nconst miss = [];\nif (!feats.length) miss.push('product features / bullet points');\nif (!p.description && !ex.description) miss.push('verified description');\nif (!(Array.isArray(p.keywords) && p.keywords.length)) miss.push('target keywords');\nconst kw = (Array.isArray(p.keywords) && p.keywords.length ? p.keywords : base.toLowerCase().split(/\\W+/).filter(w => w.length > 3)).slice(0, 10);\nconst heur = {marketplace: mk, title: base.slice(0, maxT), bullets: feats.slice(0, 5).map(String),\n  description: String(p.description || ex.description || 'DRAFT: ' + base + ' - add verified specifications before publishing.'),\n  keywords: kw, faq: [{q:'What is included in the package?', a:'TODO: confirm package contents from product data.'}],\n  seo: {metaTitle: base.slice(0, 60), metaDescription: (base + ' - ' + (feats[0] || '')).slice(0, 155)},\n  optimizationSuggestions: miss.map(m => 'Provide ' + m), confidence: miss.length ? 0.5 : 0.72};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "447ca08c-6c46-464a-859a-f5ff1aa21ad8",
+      "name": "AGENT - Listing Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Order Intelligence\", TASK = \"Validate the order, customer, payment, inventory and risk; decide fulfilment and the customer communication. Never invent order facts.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst o = c.order, cu = c.customer, lines = c.lines || [], issues = [];\nconst pay = o ? o.paymentStatus : String((e.payload && e.payload.paymentStatus) || 'UNKNOWN');\nif (!o) issues.push('order record not found');\nif (e.eventType === 'payment_failed' || pay === 'FAILED') issues.push('payment failed');\nelse if (!['PAID','AUTHORIZED'].includes(pay)) issues.push('payment not confirmed');\nif (!cu) issues.push('customer record not found');\nlet inv = lines.length ? 'IN_STOCK' : 'UNKNOWN';\nfor (const l of lines) {\n  if (!l.inventory) { inv = 'UNKNOWN'; break; }\n  const avail = l.inventory.currentStock - l.inventory.pendingOrders;\n  if (avail < l.qty) { inv = 'INSUFFICIENT'; break; }\n  if (avail - l.qty < l.inventory.reorderThreshold * 0.25) inv = 'LOW_AFTER_ORDER';\n}\nconst total = Number((o && o.total) || (e.payload && e.payload.total) || 0);\nlet risk = 0;\nif (total > cfg.highValueOrderThreshold) risk += 2; if (cu && cu.orders === 0) risk += 1; if (cu && cu.returns >= 3) risk += 2; if (issues.length) risk += 2;\nconst riskLevel = risk >= 4 ? 'HIGH' : risk >= 2 ? 'MEDIUM' : 'LOW';\nlet decision = 'APPROVE_FOR_FULFILLMENT', fulfil = 'READY_TO_SHIP', cust = 'SEND_ORDER_CONFIRMATION';\nif (e.eventType === 'order_cancelled') { decision = pay === 'PAID' ? 'REFUND_ON_CANCELLATION' : 'CANCEL_ORDER'; fulfil = 'CANCELLED'; cust = 'SEND_CANCELLATION_NOTICE'; }\nelse if (e.eventType === 'order_delayed') { decision = 'DELAY_COMMUNICATION'; fulfil = 'DELAYED'; cust = 'SEND_DELAY_NOTICE'; }\nelse if (e.eventType === 'payment_failed' || pay === 'FAILED') { decision = 'PAYMENT_RECOVERY'; fulfil = 'ON_HOLD'; cust = 'SEND_PAYMENT_RETRY_LINK'; }\nelse if (issues.length) { decision = 'HOLD_FOR_REVIEW'; fulfil = 'ON_HOLD'; cust = 'NONE'; }\nelse if (inv === 'INSUFFICIENT') { decision = 'BACKORDER'; fulfil = 'AWAITING_STOCK'; cust = 'SEND_DELAY_NOTICE'; }\nelse if (riskLevel === 'HIGH') { decision = 'HOLD_FOR_REVIEW'; fulfil = 'ON_HOLD'; cust = 'NONE'; }\nconst id = e.orderId || (o && o.orderId) || '';\nconst msgs = {SEND_ORDER_CONFIRMATION:`Thanks for your order ${id}! It is confirmed and being prepared for shipment.`, SEND_DELAY_NOTICE:`Update on order ${id}: it is taking longer than expected. We will share a new estimate shortly.`, SEND_PAYMENT_RETRY_LINK:`We could not process the payment for order ${id}. Please retry using the secure payment link we sent.`, SEND_CANCELLATION_NOTICE:`Your order ${id} has been cancelled.`, NONE:''};\nconst heur = {orderId: id, decision, riskLevel, inventoryStatus: inv, fulfillmentStatus: fulfil, customerAction: cust, customerMessage: msgs[cust] || '',\n  reason: issues.length ? issues.join('; ') : `Order validated: payment ${pay}, inventory ${inv}, risk ${riskLevel}.`, confidence: issues.length ? 0.5 : 0.88};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "3b735795-8f91-4e87-b22c-de8528e69f88",
+      "name": "AGENT - Order Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Inventory Intelligence\", TASK = \"Assess stock health using current stock, pending orders, sales velocity, lead time, seasonality and reorder threshold. Predict stockout, detect overstock or dead stock, recommend REORDER, DISCOUNT_TO_CLEAR or MONITOR. Never place purchase orders.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst inv = c.inventory, sku = e.sku || (c.product && c.product.sku) || '';\nlet heur;\nif (!inv) {\n  heur = {sku, status:'UNKNOWN', daysOfCover:null, stockoutPredictionDays:null, reorderQuantity:0, recommendation:'MONITOR', reason:'No inventory record found for this SKU.', riskLevel:'MEDIUM', confidence:0.3};\n} else {\n  const vel = inv.salesVelocityPerDay * inv.seasonalityIndex, avail = inv.currentStock - inv.pendingOrders;\n  const cover = vel > 0 ? avail / vel : 999, lead = inv.supplierLeadTimeDays;\n  let status = 'HEALTHY';\n  if (inv.lastSaleDaysAgo > 90 || vel === 0) status = 'DEAD_STOCK';\n  else if (avail <= 0) status = 'STOCKOUT';\n  else if (cover < lead) status = 'STOCKOUT_RISK';\n  else if (inv.currentStock <= inv.reorderThreshold) status = 'LOW_STOCK';\n  else if (cover > 120) status = 'OVERSTOCK';\n  const need = ['STOCKOUT','STOCKOUT_RISK','LOW_STOCK'].includes(status);\n  const qty = need ? Math.max(0, Math.ceil(vel * (lead + 21)) - Math.max(avail, 0)) : 0;\n  const rec = need ? 'REORDER' : ['OVERSTOCK','DEAD_STOCK'].includes(status) ? 'DISCOUNT_TO_CLEAR' : 'MONITOR';\n  const risk = {STOCKOUT:'CRITICAL', STOCKOUT_RISK:'HIGH', LOW_STOCK:'MEDIUM', DEAD_STOCK:'MEDIUM', OVERSTOCK:'LOW', HEALTHY:'LOW'}[status];\n  heur = {sku, status, daysOfCover: r2(Math.min(cover, 999)), stockoutPredictionDays: need ? r2(Math.max(cover, 0)) : null, reorderQuantity: qty, recommendation: rec,\n    reason: `Available ${avail} units (${inv.currentStock} on hand, ${inv.pendingOrders} pending), demand ${r2(vel)}/day, supplier lead time ${lead}d, reorder threshold ${inv.reorderThreshold}.`, riskLevel: risk, confidence: 0.85};\n}\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "20dcaa4a-dcc2-47dc-943d-09a6573f74ca",
+      "name": "AGENT - Inventory Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Pricing Intelligence\", TASK = \"Analyse competitor price, margin, fees, shipping, inventory and velocity. Recommend a price that respects the target-margin floor, plus discount and promotion opportunities. Price changes always need human approval.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst pr = c.product || {}, inv = c.inventory || {}, p = e.payload || {};\nconst price = Number(p.sellingPrice ?? pr.price), cost = Number(p.productCost ?? pr.cost), ship = Number(p.shippingCost ?? pr.shippingCost ?? 0);\nconst comp = Number(p.competitorPrice ?? 0);\nconst f = pr.fees || {marketplacePct:0.15, paymentPct:0.029, paymentFixed:0.3};\nconst target = Number(pr.targetMargin ?? 0.25);\nconst marginAt = x => x > 0 ? (x - cost - ship - (x * (f.marketplacePct + f.paymentPct) + f.paymentFixed)) / x : -1;\nconst minPrice = (cost + ship + f.paymentFixed) / (1 - f.marketplacePct - f.paymentPct - target);\nconst avail = (inv.currentStock ?? 0) - (inv.pendingOrders ?? 0), vel = inv.salesVelocityPerDay ?? 0;\nconst constrained = vel > 0 && avail < vel * (inv.supplierLeadTimeDays ?? 14);\nconst overstock = vel > 0 && avail / vel > 120;\nlet rec = price, reason = '', impact = '', disc = 0, promo = 'NONE';\nif (!price || !cost) { reason = 'Missing price or cost data; no reliable recommendation possible.'; }\nelse if (comp > 0 && comp < price) {\n  if (constrained) { reason = `Competitor is cheaper (${comp}) but stock is constrained; holding price protects margin and avoids accelerating a stockout.`; impact = 'Margin protected; some volume may shift to the competitor.'; }\n  else {\n    rec = r2(Math.max(minPrice, comp));\n    reason = `Competitor price ${comp} is below ours. Recommended price respects the ${Math.round(target * 100)}% target-margin floor (${r2(minPrice)}).` + (overstock ? ' Stock is also overstocked, so faster sell-through is desirable.' : '');\n    impact = `Projected margin ${Math.round(marginAt(rec) * 100)}% at the new price; expected conversion recovery.`;\n    if (overstock) promo = 'CLEARANCE_PROMOTION';\n  }\n} else if (comp > price * 1.1 && !constrained) { rec = r2(Math.min(comp * 0.97, price * 1.08)); reason = 'Competitors are priced well above us and stock is healthy; there is room to raise the price.'; impact = 'Higher margin per unit with limited volume risk.'; }\nelse if (price && marginAt(price) < target) { rec = r2(minPrice); reason = 'Current margin is below target; price floor suggested.'; impact = 'Restores target margin.'; }\nelse { reason = 'Price and margin are within target; no change needed.'; impact = 'None.'; }\nif (overstock && promo === 'NONE' && price) { promo = 'CLEARANCE_PROMOTION'; disc = 10; }\nconst heur = {productId: pr.productId || e.productId || '', currentPrice: price || null, recommendedPrice: rec || null, priceChangePct: price ? r2((rec - price) / price * 100) : 0,\n  currentMargin: price ? r2(marginAt(price)) : null, projectedMargin: rec ? r2(marginAt(rec)) : null, reason, expectedImpact: impact,\n  discountRecommendationPct: disc, promotionOpportunity: promo, confidence: (!price || !cost) ? 0.3 : 0.78};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "91d2bbe4-e17c-41c2-a988-d5d067ded011",
+      "name": "AGENT - Pricing Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Customer Intelligence\", TASK = \"Classify the customer (NEW, RETURNING, VIP, HIGH_VALUE, AT_RISK, INACTIVE, POTENTIAL, RISK) from purchase history, value, frequency, returns and complaints, and recommend the next action.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst cu = c.customer;\nlet heur;\nif (!cu) {\n  heur = {customerId: e.customerId || '', classification:'UNKNOWN', profileSummary:'No customer record found.', recommendedNextAction:'COLLECT_DATA', riskIndicators:[], reason:'Customer record missing.', confidence:0.3};\n} else {\n  const rr = cu.orders ? cu.returns / cu.orders : 0, ind = [];\n  if (rr >= 0.3) ind.push('high return rate'); if (cu.complaints >= 2) ind.push('repeated complaints'); if (cu.orders > 0 && cu.lastOrderDaysAgo > 120) ind.push('long inactivity');\n  let cls = 'RETURNING';\n  if (cu.orders === 0) cls = 'POTENTIAL'; else if (cu.orders === 1) cls = 'NEW';\n  if (cu.lifetimeValue >= 1000 || cu.avgOrderValue >= 250) cls = 'HIGH_VALUE';\n  if (cu.lifetimeValue >= 3000) cls = 'VIP';\n  if (cu.orders > 0 && cls !== 'VIP' && cu.lastOrderDaysAgo > 120) cls = 'INACTIVE';\n  else if (cu.orders > 0 && !['VIP','HIGH_VALUE'].includes(cls) && cu.lastOrderDaysAgo > 60) cls = 'AT_RISK';\n  if ((rr >= 0.3 && cu.returns >= 3) || cu.complaints >= 2) cls = 'RISK';\n  const next = {VIP:'PERSONAL_OUTREACH_AND_LOYALTY_OFFER', HIGH_VALUE:'LOYALTY_NURTURE', AT_RISK:'WINBACK_CAMPAIGN', INACTIVE:'WINBACK_CAMPAIGN', RISK:'MONITOR_AND_REVIEW_RETURNS', NEW:'WELCOME_SERIES', POTENTIAL:'FIRST_PURCHASE_NUDGE', RETURNING:'CROSS_SELL'}[cls];\n  heur = {customerId: cu.customerId, classification: cls, profileSummary: `${cu.orders} orders, lifetime value ${cu.lifetimeValue}, average order ${cu.avgOrderValue}, ${cu.returns} returns, ${cu.complaints} complaints, last order ${cu.lastOrderDaysAgo} days ago.`,\n    recommendedNextAction: next, riskIndicators: ind, reason: 'Classified as ' + cls + ' from purchase history.', confidence: 0.82};\n}\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "6d802399-82d2-4462-a97e-e9a606b5715f",
+      "name": "AGENT - Customer Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Customer Support\", TASK = \"Detect the customer intent (order_tracking, product_question, return_request, refund_request, complaint, shipping_question, payment_question, general_question, human_request), answer ONLY from the verified order and policy data supplied, escalate complex cases. Never fabricate order information.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst msg = String((e.payload && (e.payload.message || e.payload.text)) || ''), low = msg.toLowerCase();\nconst RULES = [['human_request', /human|real person|representative|speak to (someone|an agent)/],['refund_request', /refund|money back/],['return_request', /\\breturn\\b|exchange|send (it )?back/],['complaint', /complain|terrible|awful|unacceptable|damaged|broken|worst|not happy/],['order_tracking', /where is|track|status of my|when will .*(arrive|ship)|arrive/],['shipping_question', /shipping|deliver/],['payment_question', /payment|charged|invoice|card/],['product_question', /does it|is it|compatible|size|colou?r|battery|warranty|spec|material/]];\nconst hit = RULES.find(r => r[1].test(low)), intent = hit ? hit[0] : 'general_question';\nconst o = c.order, oid = c.resolvedOrderId || '';\nconst verified = !!o && (!e.customerId || o.customerId === e.customerId);\nlet reply = '', conf = 0.8, escalate = false, why = '', handoff = null;\nif (['human_request','complaint'].includes(intent)) { escalate = true; why = intent === 'complaint' ? 'Customer complaint requires human handling' : 'Customer asked for a human'; reply = 'I am sorry for the trouble. I have passed this to a team member who will contact you shortly.'; conf = 0.85; }\nelse if (['return_request','refund_request'].includes(intent)) {\n  if (verified) { reply = `I have opened a ${intent === 'refund_request' ? 'refund' : 'return'} request for order ${oid}. Our team will confirm the outcome by email.`; handoff = intent === 'refund_request' ? 'refund_requested' : 'return_requested'; conf = 0.8; }\n  else { escalate = true; conf = 0.35; why = 'Order could not be verified for this customer'; reply = 'Could you please confirm your order number so we can help with your request?'; }\n}\nelse if (['order_tracking','shipping_question','payment_question'].includes(intent)) {\n  if (!oid || !o) { conf = 0.3; escalate = true; why = 'No order found to answer from'; reply = 'Could you share your order number so I can check it?'; }\n  else if (!verified) { conf = 0.25; escalate = true; why = 'Order does not belong to this customer; details withheld'; reply = 'I could not verify that order against your account. A team member will help you.'; }\n  else if (intent === 'payment_question') { reply = `The payment status of order ${oid} is ${o.paymentStatus}.`; conf = 0.85; }\n  else { const s = o.shipment; reply = s ? `Order ${oid} is ${String(s.status).replace(/_/g, ' ').toLowerCase()} with ${s.carrier}. Tracking number: ${s.trackingNumber}. Estimated delivery: ${s.eta}.` : `Order ${oid} has been received and has not shipped yet.`; conf = 0.9; }\n}\nelse if (intent === 'product_question' && c.product) { reply = `${c.product.title}: the listed price is ${c.product.price}. A team member will follow up with detailed specifications.`; conf = 0.5; why = 'Product specifications are not in the available data'; }\nelse { reply = 'Thanks for your message. A team member will review and reply shortly.'; conf = 0.4; why = 'Intent unclear'; }\nconst heur = {intent, customerId: e.customerId || '', orderId: oid, orderVerified: verified, answerDraft: reply, escalate, escalationReason: why, handoffEvent: handoff,\n  policyReferences: ['returnWindowDays=' + (c.policy && c.policy.returnWindowDays)], reason: why || ('Intent ' + intent + ' answered from verified order data'), confidence: conf};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "84188229-1faa-4ea5-8010-a4e25160f019",
+      "name": "AGENT - Customer Support",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Review Intelligence\", TASK = \"Analyse the review: sentiment, severity, topics, recurring patterns, root cause, recommended action and a polite response draft. Do not post anything.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst p = e.payload || {}, rating = Number(p.rating), text = String(p.text || ''), low = text.toLowerCase();\nconst TOP = {battery:/battery|charg/, shipping:/shipping|delivery|late|arrived/, packaging:/packag|box|crushed/, quality:/broke|defect|quality|stopped working|cheap/, fit_size:/size|fit|too small|too large/, support:/support|customer service|never replied|no reply|refund/, price:/price|expensive|value/, safety:/fire|burn|overheat|shock|injur|allergic/};\nconst topics = Object.keys(TOP).filter(k => TOP[k].test(low));\nconst sentiment = rating <= 2 ? 'NEGATIVE' : rating === 3 ? 'NEUTRAL' : 'POSITIVE';\nconst pat = c.reviewPatterns;\nconst recurring = pat ? Object.entries(pat.topics).filter(([k, n]) => topics.includes(k) && n >= 10).map(([k, n]) => `${k}: ${n} mentions in last ${pat.windowDays} days`) : [];\nlet severity = rating <= 1 ? 'HIGH' : rating === 2 ? 'MEDIUM' : 'LOW';\nif (topics.includes('safety')) severity = 'CRITICAL'; else if (recurring.length && sentiment === 'NEGATIVE' && severity === 'MEDIUM') severity = 'HIGH';\nconst cause = topics.includes('safety') ? 'Possible product safety issue' : topics.includes('battery') ? 'Battery performance / quality issue' : topics.includes('support') ? 'Customer service responsiveness' : topics.includes('shipping') ? 'Shipping / delivery experience' : topics.length ? 'Product quality or expectation mismatch' : 'Not determinable from the review text';\nconst heur = {reviewId: p.reviewId || '', sentiment, rating: isNaN(rating) ? null : rating, severity, topics, recurringPatterns: recurring, rootCause: cause,\n  recommendedAction: severity === 'CRITICAL' ? 'ESCALATE_PRODUCT_SAFETY_REVIEW' : sentiment === 'NEGATIVE' ? 'RESPOND_AND_INVESTIGATE' : 'NO_RESPONSE_NEEDED',\n  responseDraft: sentiment === 'NEGATIVE' ? 'We are sorry about your experience. Please contact our support team so we can make this right.' : '',\n  reason: `Rating ${rating}; topics: ${topics.join(', ') || 'none'}.` + (recurring.length ? ' Recurring pattern detected.' : ''), confidence: text ? 0.8 : 0.4};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "b9a57971-fc69-4be5-9414-462f5a741b79",
+      "name": "AGENT - Review Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Returns Intelligence\", TASK = \"Assess the return/refund request against the order, return policy, customer history, reason and risk indicators. Decide AUTO_APPROVE, REFUND_RECOMMENDED, REPLACEMENT_RECOMMENDED, PARTIAL_REFUND_RECOMMENDED, HUMAN_REVIEW or REJECT_RECOMMENDED. Financial actions need human approval.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst o = c.order, cu = c.customer, pol = c.policy || {}, p = e.payload || {};\nconst flags = [];\nif (!o) flags.push('order not found');\nconst since = o && o.deliveredDaysAgo != null ? o.deliveredDaysAgo : null;\nconst inWindow = since !== null && since <= pol.returnWindowDays;\nif (o && since === null) flags.push('delivery date unknown'); else if (o && !inWindow) flags.push('outside return window');\nconst rr = cu && cu.orders ? cu.returns / cu.orders : 0;\nif (cu && (rr > 0.3 || cu.returns >= 3)) flags.push('elevated customer return history');\nif (cu && cu.complaints >= 2) flags.push('repeated complaints');\nconst amount = Number(p.refundAmount ?? (o && o.total) ?? 0);\nconst cond = String(p.condition || 'unknown'), res = String(p.requestedResolution || 'refund');\nlet decision, reason;\nif (!o) { decision = 'HUMAN_REVIEW'; reason = 'Order could not be verified.'; }\nelse if (since === null) { decision = 'HUMAN_REVIEW'; reason = 'Delivery date unknown.'; }\nelse if (!inWindow) { decision = 'REJECT_RECOMMENDED'; reason = `Delivered ${since} days ago; policy window is ${pol.returnWindowDays} days.`; }\nelse if (flags.length) { decision = 'HUMAN_REVIEW'; reason = 'Risk indicators: ' + flags.join(', '); }\nelse if (['damaged','defective'].includes(cond)) { decision = res === 'refund' ? 'REFUND_RECOMMENDED' : 'REPLACEMENT_RECOMMENDED'; reason = 'Item reported ' + cond + '; within return window.'; }\nelse if (cond === 'used') { decision = 'PARTIAL_REFUND_RECOMMENDED'; reason = 'Item used; partial refund per policy.'; }\nelse if (res === 'replacement' || res === 'exchange') { decision = 'REPLACEMENT_RECOMMENDED'; reason = 'Customer requested ' + res + '.'; }\nelse if (amount <= pol.autoApproveReturnBelow) { decision = 'AUTO_APPROVE'; reason = `Low value (${amount}), within window, clean customer history.`; }\nelse { decision = 'REFUND_RECOMMENDED'; reason = 'Within window; value above the auto-approve limit.'; }\nconst refundAmt = decision === 'PARTIAL_REFUND_RECOMMENDED' ? r2(amount * 0.8) : (['AUTO_APPROVE','REFUND_RECOMMENDED'].includes(decision) ? amount : 0);\nconst heur = {orderId: c.resolvedOrderId || '', customerId: e.customerId || '', decision, refundAmount: refundAmt, riskFlags: flags,\n  policyCheck: {withinWindow: inWindow, windowDays: pol.returnWindowDays, deliveredDaysAgo: since}, reason, confidence: o ? (flags.length ? 0.6 : 0.85) : 0.3};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "8c402509-81de-40f4-849c-5c3e6d8c09f2",
+      "name": "AGENT - Returns Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        1728
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Revenue Recovery\", TASK = \"Choose the best revenue-recovery action (EMAIL, SMS, DISCOUNT, REMINDER, NO_ACTION, HUMAN_REVIEW) for an abandoned cart/checkout, inactive customer or repeat-purchase opportunity, respecting consent. Suggest cross-sell and upsell.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst cu = c.customer || {}, p = e.payload || {};\nconst consent = p.consent || {email: true, sms: false};\nconst val = Number(p.cartValue || 0), mins = Number(p.minutesSinceAbandon || 0), ltv = cu.lifetimeValue || 0;\nconst XS = {'WEB-PRO-BLK':['Replacement ear tips set','Protective carry case'], 'BOT-STL-1L':['Insulated bottle sleeve']};\nconst first = (p.items && p.items[0] && p.items[0].sku) || e.sku || '';\nconst cart = ['cart_abandoned','checkout_abandoned'].includes(e.eventType);\nlet action = 'EMAIL', pct = 0, why = '';\nif (!consent.email && !consent.sms) { action = 'NO_ACTION'; why = 'No marketing consent on record.'; }\nelse if (cart && mins < 30) { action = 'REMINDER'; why = 'Too soon for outreach; schedule a gentle reminder.'; }\nelse if (ltv >= 3000) { action = 'HUMAN_REVIEW'; why = 'High-value customer; outreach should be personal.'; }\nelse if (cart) { if (val >= 100 && (cu.orders || 0) === 0) { action = 'DISCOUNT'; pct = 10; why = 'High-value first-time cart; a small incentive is recommended.'; } else { action = 'EMAIL'; why = 'Standard recovery email with cart contents.'; } }\nelse if (e.eventType === 'customer_inactive') { pct = (cu.complaints || 0) >= 2 ? 0 : 10; action = pct ? 'DISCOUNT' : 'EMAIL'; why = 'Win-back message for an inactive customer.'; }\nelse { action = 'EMAIL'; why = 'Repeat-purchase / cross-sell suggestion.'; }\nconst channel = action === 'NO_ACTION' ? 'none' : consent.email ? 'email' : 'sms';\nconst heur = {action, channel, discountPercent: pct, offer: pct ? `${pct}% off the items in your cart` : '', crossSell: XS[first] || [], upsell: val > 0 && val < 100 ? ['Bundle to reach free shipping'] : [],\n  messageDraft: action === 'NO_ACTION' ? '' : 'You left something in your cart. Complete your order whenever you are ready.' + (pct ? ` Here is ${pct}% off.` : ''),\n  recoveryAttempt: 1, recoveryStatus: action === 'NO_ACTION' ? 'SKIPPED' : 'PLANNED', expectedRecoveredRevenue: action === 'NO_ACTION' ? 0 : r2(val * (pct ? 0.18 : 0.1)), recoveredRevenue: 0,\n  reason: why, confidence: 0.78};\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "597e7ccb-45ac-46eb-bd16-170573df0f05",
+      "name": "AGENT - Revenue Recovery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        1920
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Profit Intelligence\", TASK = \"Compute profit per product from revenue, COGS, fees, shipping, ads, discounts, refunds and return cost; identify low-margin, high-margin and loss-making products and anomalies; explain WHY profit changed using only the supplied numbers.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst m = c.metrics;\nlet heur;\nif (!m || !m.productPnL) {\n  heur = {period:'', totals:null, lowMarginProducts:[], highMarginProducts:[], lossMakingProducts:[], productBreakdown:[], anomalies:[], whyProfitChanged:'No P&L data available.', reason:'No P&L data available.', confidence:0.2};\n} else {\n  const rows = m.productPnL.map(r => {\n    const net = r.revenue - r.cogs - r.marketplaceFees - r.paymentFees - r.shipping - r.ads - r.discounts - r.refunds - r.returnCost;\n    return {sku:r.sku, revenue:r2(r.revenue), grossProfit:r2(r.revenue - r.cogs), netProfit:r2(net), margin:r.revenue ? r2(net / r.revenue) : 0, feePct:r.revenue ? r2((r.marketplaceFees + r.paymentFees) / r.revenue) : 0, adPct:r.revenue ? r2(r.ads / r.revenue) : 0};\n  });\n  const sum = k => r2(m.productPnL.reduce((a, r) => a + r[k], 0));\n  const totals = {revenue:sum('revenue'), COGS:sum('cogs'), marketplaceFees:sum('marketplaceFees'), paymentFees:sum('paymentFees'), shippingCost:sum('shipping'), advertisingCost:sum('ads'), discounts:sum('discounts'), refunds:sum('refunds'), returnCost:sum('returnCost')};\n  totals.grossProfit = r2(totals.revenue - totals.COGS); totals.netProfit = r2(rows.reduce((a, r) => a + r.netProfit, 0)); totals.margin = totals.revenue ? r2(totals.netProfit / totals.revenue) : 0;\n  const t = m.today, b = m.baseline7d, why = [];\n  if (t.adSpend > b.adSpend * 1.1) why.push(`advertising spend is ${Math.round((t.adSpend / b.adSpend - 1) * 100)}% above the 7-day baseline`);\n  if (t.revenue < b.revenue * 0.9) why.push(`revenue is ${Math.round((1 - t.revenue / b.revenue) * 100)}% below the baseline`);\n  if (t.refunds / t.revenue > 0.03) why.push(`refunds are ${Math.round(t.refunds / t.revenue * 100)}% of revenue`);\n  const loss = rows.filter(r => r.netProfit < 0), low = rows.filter(r => r.netProfit >= 0 && r.margin < 0.1), high = rows.filter(r => r.margin >= 0.25);\n  const an = [];\n  rows.filter(r => r.feePct > 0.2).forEach(r => an.push(`${r.sku}: fees ${Math.round(r.feePct * 100)}% of revenue`));\n  rows.filter(r => r.adPct > 0.2).forEach(r => an.push(`${r.sku}: advertising ${Math.round(r.adPct * 100)}% of revenue`));\n  const text = why.length ? `Net profit ${totals.netProfit} vs 7-day baseline ${b.netProfit}, mainly because ${why.join(', ')}.` : 'No dominant driver found in the supplied data.';\n  heur = {period:m.date, totals, lowMarginProducts:low.map(r => r.sku), highMarginProducts:high.map(r => r.sku), lossMakingProducts:loss.map(r => r.sku), productBreakdown:rows, anomalies:an, whyProfitChanged:text, reason:text, confidence:0.8};\n}\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "75c1ae46-7771-4ea8-bdb7-bc9d72e2abe8",
+      "name": "AGENT - Profit Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        2128
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Ecommerce Analyst\", TASK = \"Investigate the business issue using ONLY the supplied metrics. List evidence, ranked possible causes, the most likely cause, business impact and recommended actions. Never invent evidence.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst m = c.metrics, p = e.payload || {};\nlet heur;\nif (!m) {\n  heur = {issue: p.question || e.eventType, evidence:[], possibleCauses:[], mostLikelyCause:'Insufficient data', businessImpact:'Unknown', recommendedActions:['Connect a metrics data source'], reason:'No metrics available.', confidence:0.2};\n} else {\n  const t = m.today, b = m.baseline7d, ch = (a, x) => x ? (a - x) / x : 0, pc = x => Math.round(x * 1000) / 10;\n  const dRev = ch(t.revenue, b.revenue), dOrd = ch(t.orders, b.orders), dCr = ch(t.conversionRate, b.conversionRate), dSes = ch(t.sessions, b.sessions), dAd = ch(t.adSpend, b.adSpend);\n  const evidence = [`Revenue ${pc(dRev)}% vs 7-day baseline (${t.revenue} vs ${b.revenue})`, `Orders ${pc(dOrd)}% (${t.orders} vs ${b.orders})`, `Sessions ${pc(dSes)}%`, `Conversion rate ${pc(dCr)}% (${pc(t.conversionRate)}% vs ${pc(b.conversionRate)}% )`];\n  const causes = [];\n  if (dSes > -0.1 && dCr < -0.15) causes.push({cause:'Conversion drop while traffic is stable', weight:3, evidence:[`Sessions ${pc(dSes)}% but conversion ${pc(dCr)}%`], action:'Audit product pages, pricing and stock availability on top SKUs'});\n  (m.inventoryRisks || []).filter(r => r.type === 'STOCKOUT_RISK').forEach(r => { causes.push({cause:`Stock constraint on ${r.sku}`, weight:2, evidence:[`${r.sku} has ${r.daysOfCover} days of cover`], action:`Review purchase order for ${r.sku}`}); evidence.push(`${r.sku} has only ${r.daysOfCover} days of cover`); });\n  (m.competitorChanges || []).forEach(x => { causes.push({cause:`Competitor undercutting on ${x.sku}`, weight:2, evidence:[`Competitor ${x.competitorPrice} vs our ${x.ourPrice}`], action:`Review pricing for ${x.sku} (needs approval)`}); evidence.push(`Competitor price ${x.competitorPrice} vs ours ${x.ourPrice} on ${x.sku}`); });\n  if (m.reviews && m.reviews.negative >= 5) { causes.push({cause:'Negative review spike', weight:2, evidence:[`${m.reviews.negative} negative reviews; top issue: ${m.reviews.topIssue}`], action:'Investigate the top review issue and respond to affected customers'}); evidence.push(`${m.reviews.negative} negative reviews, top issue: ${m.reviews.topIssue}`); }\n  if (m.returns && m.returns.rate > b.returnRate * 1.5) { causes.push({cause:'Return rate increase', weight:1, evidence:[`Return rate ${pc(m.returns.rate)}% vs ${pc(b.returnRate)}% baseline`], action:`Review listing accuracy for ${m.returns.topSku}`}); evidence.push(`Return rate ${pc(m.returns.rate)}% vs ${pc(b.returnRate)}% baseline`); }\n  if (dAd > 0.1 && dRev < 0) { causes.push({cause:'Ad spend up while revenue is down', weight:1, evidence:[`Ad spend ${pc(dAd)}% vs baseline`], action:'Rebalance ad budget toward profitable SKUs'}); evidence.push(`Ad spend ${pc(dAd)}% vs baseline`); }\n  causes.sort((x, y) => y.weight - x.weight);\n  const top = causes[0];\n  heur = {issue: p.question || ('Investigate ' + e.eventType), evidence, possibleCauses: causes.map(x => ({cause:x.cause, weight:x.weight, evidence:x.evidence})), mostLikelyCause: top ? top.cause : 'No clear cause in the available data',\n    businessImpact: `Revenue is ${r2(b.revenue - t.revenue)} below the 7-day daily baseline; net profit ${t.netProfit} vs ${b.netProfit}.`,\n    recommendedActions: causes.map(x => x.action), reason: top ? top.cause + ': ' + top.evidence[0] : 'No clear cause found', confidence: causes.length ? Math.min(0.8, 0.5 + 0.04 * evidence.length) : 0.35};\n}\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "7269ae5b-4a98-48d3-89c4-cad38f708e67",
+      "name": "AGENT - Ecommerce Analyst",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        2320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const AGENT = \"Ecommerce COO\", TASK = \"Act as the Ecommerce COO: summarise performance, rank problems and opportunities, identify revenue/inventory/customer risks, recommend actions (flag which are automatable and which need approval) and answer the standard executive questions. Use ONLY supplied findings.\";\nconst r2 = x => Math.round(x * 100) / 100;\ntry {\nconst e = $json.event, c = $json.context || {}, cfg = $json.config;\nlet followUps = [];\nconst m = c.metrics;\nlet heur;\nif (!m) {\n  heur = {reportDate:'', todaysPerformance:null, topProblems:[], topOpportunities:[], revenueRisks:[], inventoryRisks:[], customerRisks:[], recommendedActions:[], itemsRequiringHumanAttention:[], answers:{}, delegations:[], reason:'No metrics available.', confidence:0.2};\n} else {\n  const t = m.today, b = m.baseline7d, pc = x => Math.round(x * 1000) / 10, ch = (a, x) => x ? (a - x) / x : 0;\n  const pnl = m.productPnL || [], net = r => r.revenue - r.cogs - r.marketplaceFees - r.paymentFees - r.shipping - r.ads - r.discounts - r.refunds - r.returnCost;\n  const loss = pnl.filter(r => net(r) < 0).map(r => r.sku);\n  const problems = [], opps = [], revRisks = [], invRisks = [], custRisks = [], actions = [], human = [], deleg = [], follow = [];\n  const act = (action, owner, auto, appr) => actions.push({action, owner, automatable: auto, requiresApproval: appr});\n  const dRev = ch(t.revenue, b.revenue), dCr = ch(t.conversionRate, b.conversionRate);\n  if (dRev < -0.2) {\n    problems.push(`Revenue ${pc(dRev)}% vs 7-day baseline`); revRisks.push(`Daily revenue gap of ${r2(b.revenue - t.revenue)}`);\n    deleg.push({agent:'Ecommerce Analyst', finding:`Conversion ${pc(dCr)}% while sessions are ${pc(ch(t.sessions, b.sessions))}%`});\n    act('Investigate the sales drop', 'Ecommerce Analyst', true, false);\n    follow.push({eventType:'sales_anomaly', payload:{metric:'revenue', period:'today', question:'Why did sales fall?'}});\n  }\n  (m.inventoryRisks || []).forEach(r => {\n    const txt = `${r.sku}: ${r.type}` + (r.daysOfCover != null ? ` (${r.daysOfCover} days of cover)` : '');\n    invRisks.push(txt); deleg.push({agent:'Inventory Agent', finding:txt});\n    if (r.type === 'STOCKOUT_RISK') { problems.push('Stockout risk on ' + r.sku); act('Review purchase order for ' + r.sku, 'Inventory Agent', false, true); follow.push({eventType:'low_inventory', sku:r.sku, payload:{}}); }\n    else opps.push(`Clear ${r.type.toLowerCase().replace('_', ' ')} on ${r.sku} with an approved promotion`);\n  });\n  (m.competitorChanges || []).forEach(x => { deleg.push({agent:'Pricing Agent', finding:`${x.sku}: competitor at ${x.competitorPrice} vs ours ${x.ourPrice}`}); revRisks.push(`Competitor undercutting ${x.sku}`); });\n  if (m.returns && m.returns.rate > 0.08) { problems.push(`Return rate ${pc(m.returns.rate)}% (top reason: ${m.returns.topReason})`); deleg.push({agent:'Returns Agent', finding:`${m.returns.count} returns, top SKU ${m.returns.topSku}`}); follow.push({eventType:'high_return_rate', sku:m.returns.topSku, payload:{rate:m.returns.rate, topReason:m.returns.topReason}}); }\n  if (m.reviews && m.reviews.negative >= 5) { problems.push(`${m.reviews.negative} negative reviews (top issue: ${m.reviews.topIssue})`); custRisks.push(`Review sentiment falling: average ${m.reviews.avgRating}`); deleg.push({agent:'Review Agent', finding:m.reviews.topIssue}); }\n  if (m.support && m.support.unresolvedOver24h > 0) { custRisks.push(`${m.support.unresolvedOver24h} support tickets unresolved for more than 24h`); deleg.push({agent:'Support Agent', finding:`${m.support.open} open tickets`}); human.push(`${m.support.unresolvedOver24h} aged support tickets need a human owner`); }\n  (m.customersAtRisk || []).forEach(x => custRisks.push(`${x.customerId}: ${x.note}`));\n  if (loss.length) { problems.push('Loss-making products: ' + loss.join(', ')); deleg.push({agent:'Profit Agent', finding:'Loss-making: ' + loss.join(', ')}); act('Reprice or pause ads on loss-making products', 'Profit Agent', false, true); }\n  const best = pnl.slice().sort((x, y) => net(y) / y.revenue - net(x) / x.revenue)[0];\n  if (best && loss.length) opps.push(`Shift ad budget toward ${best.sku} (best net margin)`);\n  const sd = $getWorkflowStaticData('global');\n  const pend = Object.values(sd.approvals || {}).filter(a => a.approval && a.approval.status === 'PENDING').length;\n  if (pend) human.push(`${pend} approvals awaiting a decision`);\n  act('Send daily executive summary', 'Ecommerce COO', true, false);\n  if ((e.metadata.depth || 0) === 0) followUps = follow.slice(0, 3).map(f => ({eventId:`${e.eventId}-${f.eventType}-${f.sku || 'all'}`, eventType:f.eventType, source:'coo', timestamp:new Date().toISOString(), sku:f.sku || '', payload:f.payload || {}, metadata:{depth:1, parentEventId:e.eventId}}));\n  const answers = {\n    needsAttention: [...problems.slice(0, 3), ...human].join(' | ') || 'Nothing urgent today.',\n    whySalesDown: (deleg.find(d => d.agent === 'Ecommerce Analyst') || {}).finding || 'No significant sales drop detected.',\n    riskyProducts: [...new Set([...(m.inventoryRisks || []).map(r => r.sku), ...loss])].join(', ') || 'None identified.',\n    whereLosingMoney: loss.length ? 'Loss-making: ' + loss.join(', ') : 'No loss-making products found.',\n    customersNeedingAttention: custRisks.filter(x => /^C-/.test(x)).join(' | ') || 'None identified.',\n    whatNext: actions.slice(0, 3).map(a => a.action).join(' -> '),\n    automatableActions: actions.filter(a => a.automatable && !a.requiresApproval).map(a => a.action)\n  };\n  heur = {reportDate: m.date,\n    todaysPerformance: {orders:t.orders, revenue:t.revenue, grossProfit:t.grossProfit, netProfit:t.netProfit, conversionRate:t.conversionRate, adSpend:t.adSpend, vsBaseline:{revenuePct:pc(dRev), ordersPct:pc(ch(t.orders, b.orders)), netProfitPct:pc(ch(t.netProfit, b.netProfit))}},\n    topProblems: problems, topOpportunities: opps, revenueRisks: revRisks, inventoryRisks: invRisks, customerRisks: custRisks, recommendedActions: actions, itemsRequiringHumanAttention: human, answers, delegations: deleg,\n    reason: problems.length ? problems.slice(0, 2).join('; ') : 'No major problems found.', confidence: 0.8};\n}\nconst KEYS = Object.keys(heur);\nconst sys = 'You are the ' + AGENT + ' of an ecommerce operations system. TASK: ' + TASK + ' Respond with ONE JSON object containing exactly these keys: ' + KEYS.join(', ') + '. Use ONLY the supplied data. Never invent order, customer, price, inventory or review facts. If data is missing, set confidence below 0.5 and explain in the reason. Confidence is a number from 0 to 1. Output raw JSON only, no markdown.';\nreturn {json:{...$json, agent:AGENT, moduleOutput:heur, schemaKeys:KEYS, agentError:null, followUpEvents:followUps,\n  aiRequest:{model:cfg.aiModel, temperature:0.1, response_format:{type:'json_object'}, messages:[{role:'system', content:sys},{role:'user', content:JSON.stringify({event:$json.aiSafe, context:$json.aiSafeContext, deterministicBaseline:heur})}]}}};\n} catch (err) {\n  const m = String(err && err.message || err);\n  return {json:{...$json, agent:AGENT, moduleOutput:null, agentError:m, exceptions:[...($json.exceptions || []), {type:'AGENT_FAILURE', severity:'HIGH', source:AGENT, message:AGENT + ' failed: ' + m, recommendedAction:'Inspect agent node and input data'}]}};\n}"
+      },
+      "id": "1cfcb460-e314-4bae-a27a-d6704c8012a0",
+      "name": "AGENT - Ecommerce COO",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "beb79919-3f22-4af8-a3be-d01d43cf2fde",
+              "leftValue": "={{ String(($json.config && $json.config.aiEnabled === true) && !$json.agentError && !!$json.aiRequest) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "0e6ca149-783e-4dee-a7ee-409f9180245c",
+      "name": "SYSTEM - AI Gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.aiRequest) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "39ba77ff-2a1e-4b55-a27d-05eed393aa9a",
+      "name": "SYSTEM - AI Reasoning (LLM HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        1264
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SyH13B2i0vxyMII8",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst ctx = $('SYSTEM - AI Gate').item.json;\nconst cur = $json;\nconst exceptions = [...(ctx.exceptions || [])];\nlet out = ctx.moduleOutput, aiUsed = false;\nif (ctx.config && ctx.config.aiEnabled === true && ctx.aiRequest && !ctx.agentError) {\n  try {\n    if (cur.error) throw new Error('AI call failed: ' + (cur.error.message || JSON.stringify(cur.error)).slice(0, 200));\n    const body = cur.body !== undefined ? cur.body : cur;\n    let txt = (body.choices && body.choices[0] && body.choices[0].message && body.choices[0].message.content) || (body.content && body.content[0] && body.content[0].text) || body.output_text;\n    if (!txt) throw new Error('Empty AI response');\n    txt = String(txt).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();\n    const parsed = JSON.parse(txt);\n    const missing = (ctx.schemaKeys || []).filter(k => !(k in parsed));\n    if (missing.length) throw new Error('AI output missing keys: ' + missing.join(', '));\n    out = parsed; aiUsed = true;\n  } catch (err) {\n    exceptions.push({type:'AI_FAILURE', severity:'LOW', source:'SYSTEM - Validate AI Output', message:'AI output unusable, deterministic fallback used: ' + String(err.message).slice(0, 200), recommendedAction:'Check LLM endpoint, credentials and rate limits'});\n  }\n}\nreturn {json:{...ctx, moduleOutput: out, aiUsed, exceptions}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Validate AI Output\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "453a0e22-1315-4de7-a7d2-a3b9a1e55155",
+      "name": "SYSTEM - Validate AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst M = $json.module, o = $json.moduleOutput || {}, cfg = $json.config, e = $json.event, ctx = $json.context || {};\nconst excs = [...($json.exceptions || [])];\nconst follow = [...($json.followUpEvents || [])];\nconst depth = Number((e.metadata && e.metadata.depth) || 0);\nconst cn = Number(o.confidence), conf = isNaN(cn) ? 0 : cn;\nlet d = {decision:'NO_DECISION', action:'LOG_ONLY', actionType:'internal_log', risk:'LOW', target:'internal', params:{}, reason:String(o.reason || '')};\nswitch (M) {\n  case 'product': d = {...d, decision:o.recommendation || 'NEED_MORE_DATA', action:'GENERATE_PRODUCT_REPORT', actionType:'report', risk:(o.risks || []).length >= 3 ? 'MEDIUM' : 'LOW'}; break;\n  case 'listing': d = {...d, decision:'LISTING_DRAFT_READY', action:'PUBLISH_LISTING_UPDATE', actionType:'listing_publish', target:o.marketplace || 'shopify', risk:'MEDIUM', reason:(o.optimizationSuggestions || []).join('; ') || 'Listing draft generated', params:{marketplace:o.marketplace, title:o.title}}; break;\n  case 'order': {\n    const dec = o.decision || 'HOLD_FOR_REVIEW', refund = /REFUND/.test(dec), hold = /HOLD/.test(dec) || o.customerAction === 'NONE';\n    d = {...d, decision:dec, action:refund ? 'ISSUE_REFUND' : hold ? 'CREATE_HUMAN_REVIEW_TASK' : 'SEND_CUSTOMER_MESSAGE', actionType:refund ? 'refund' : hold ? 'human_task' : 'customer_message', risk:o.riskLevel || 'MEDIUM', target:'orders', params:{orderId:o.orderId, customerAction:o.customerAction, message:o.customerMessage}};\n    if (e.eventType === 'payment_failed') excs.push({type:'PAYMENT_FAILURE', severity:'MEDIUM', source:'AGENT - Order Intelligence', message:'Payment failed for order ' + o.orderId, recommendedAction:'Send payment retry link'});\n    if (e.eventType === 'order_delayed') excs.push({type:'SHIPPING_DELAY', severity:'MEDIUM', source:'AGENT - Order Intelligence', message:'Shipping delay on order ' + o.orderId, recommendedAction:'Notify customer'});\n    break; }\n  case 'inventory': {\n    const rec = o.recommendation || 'MONITOR', po = rec === 'REORDER', clear = rec === 'DISCOUNT_TO_CLEAR';\n    d = {...d, decision:rec, action:po ? 'CREATE_PURCHASE_ORDER' : clear ? 'PROPOSE_CLEARANCE_PRICE' : 'LOG_ONLY', actionType:po ? 'purchase_order' : clear ? 'price_change' : 'internal_log', risk:o.riskLevel || 'MEDIUM', target:'erp', params:{sku:o.sku, quantity:o.reorderQuantity, status:o.status}};\n    if (['STOCKOUT','STOCKOUT_RISK'].includes(o.status)) excs.push({type:'INVENTORY_RISK', severity:o.status === 'STOCKOUT' ? 'CRITICAL' : 'HIGH', source:'AGENT - Inventory Intelligence', message:o.sku + ' ' + o.status + ': ' + o.reason, recommendedAction:'Review purchase order'});\n    break; }\n  case 'pricing': {\n    const change = Math.abs((o.recommendedPrice || 0) - (o.currentPrice || 0)) > 0.005;\n    d = {...d, decision:change ? 'PRICE_CHANGE_RECOMMENDED' : 'HOLD_PRICE', action:change ? 'UPDATE_PRICE' : 'LOG_ONLY', actionType:change ? 'price_change' : 'internal_log', risk:change && Math.abs(o.priceChangePct || 0) > 10 ? 'HIGH' : 'MEDIUM', target:'marketplace', params:{productId:o.productId, sku:e.sku, price:o.recommendedPrice}};\n    break; }\n  case 'customer': {\n    const vip = ['VIP','HIGH_VALUE'].includes(o.classification);\n    d = {...d, decision:o.classification || 'UNKNOWN', action:vip ? 'PROPOSE_VIP_OUTREACH' : 'UPDATE_CUSTOMER_SEGMENT', actionType:vip ? 'vip_action' : 'internal_update', risk:o.classification === 'RISK' ? 'MEDIUM' : 'LOW', target:'crm', params:{customerId:o.customerId, segment:o.classification, next:o.recommendedNextAction}};\n    break; }\n  case 'support': {\n    const esc = o.escalate === true || ['complaint','human_request'].includes(o.intent);\n    d = {...d, decision:esc ? 'ESCALATE' : (o.intent || 'general_question'), action:esc ? 'CREATE_HUMAN_REVIEW_TASK' : 'SEND_SUPPORT_REPLY', actionType:esc ? 'human_task' : 'customer_message', risk:o.intent === 'complaint' ? 'MEDIUM' : 'LOW', reason:o.escalationReason || d.reason, target:'helpdesk', params:{orderId:o.orderId, intent:o.intent, message:o.answerDraft}};\n    if (o.handoffEvent && depth < 1) follow.push({eventId:e.eventId + '-' + o.handoffEvent, eventType:o.handoffEvent, source:'support_agent', timestamp:new Date().toISOString(), customerId:e.customerId, orderId:o.orderId, payload:{reason:'Customer request via support channel', requestedResolution:'refund', condition:'unknown'}, metadata:{depth:1, parentEventId:e.eventId}});\n    break; }\n  case 'review': {\n    const sev = o.severity || 'LOW', quiet = o.recommendedAction === 'NO_RESPONSE_NEEDED';\n    d = {...d, decision:o.recommendedAction || 'REVIEW', action:quiet ? 'LOG_ONLY' : 'POST_PUBLIC_REVIEW_RESPONSE', actionType:quiet ? 'internal_log' : 'public_response', risk:['HIGH','CRITICAL'].includes(sev) ? 'HIGH' : 'MEDIUM', target:e.source, params:{reviewId:o.reviewId, response:o.responseDraft}};\n    break; }\n  case 'returns': {\n    const dec = o.decision || 'HUMAN_REVIEW', money = ['AUTO_APPROVE','REFUND_RECOMMENDED','PARTIAL_REFUND_RECOMMENDED','REPLACEMENT_RECOMMENDED'].includes(dec);\n    const autoOk = cfg.autoApproveReturns === true && dec === 'AUTO_APPROVE' && conf >= cfg.lowConfidenceThreshold;\n    d = {...d, decision:dec, action:dec === 'HUMAN_REVIEW' ? 'CREATE_HUMAN_REVIEW_TASK' : dec === 'REPLACEMENT_RECOMMENDED' ? 'CREATE_REPLACEMENT_ORDER' : dec === 'REJECT_RECOMMENDED' ? 'SEND_RETURN_REJECTION' : 'ISSUE_REFUND', actionType:dec === 'HUMAN_REVIEW' ? 'human_task' : autoOk ? 'customer_message' : 'refund', risk:(o.riskFlags || []).length ? 'MEDIUM' : 'LOW', target:'orders', params:{orderId:o.orderId, customerId:o.customerId, refundAmount:o.refundAmount, decision:dec}};\n    if (money || dec === 'REJECT_RECOMMENDED') d.params.note = 'financial decision';\n    break; }\n  case 'revenue': {\n    const a = o.action || 'NO_ACTION', pct = Number(o.discountPercent) || 0, big = a === 'DISCOUNT' && pct > cfg.maxAutoDiscountPct, hr = a === 'HUMAN_REVIEW';\n    d = {...d, decision:a, action:a === 'NO_ACTION' ? 'LOG_ONLY' : hr ? 'CREATE_HUMAN_REVIEW_TASK' : 'SEND_RECOVERY_' + a, actionType:a === 'NO_ACTION' ? 'internal_log' : hr ? 'human_task' : big ? 'discount_large' : 'recovery_outreach', risk:big ? 'HIGH' : 'LOW', target:'marketing', params:{channel:o.channel, discountPercent:pct, message:o.messageDraft, customerId:e.customerId, recoveryAttempt:o.recoveryAttempt}};\n    break; }\n  case 'profit': {\n    const lossN = (o.lossMakingProducts || []).length;\n    d = {...d, decision:lossN ? 'LOSS_MAKING_PRODUCTS_FOUND' : 'PROFIT_REVIEWED', action:'PUBLISH_PROFIT_REPORT', actionType:'report', risk:lossN ? 'MEDIUM' : 'LOW', reason:o.whyProfitChanged || d.reason};\n    if (e.eventType === 'profit_anomaly') excs.push({type:'PROFIT_ANOMALY', severity:'HIGH', source:'AGENT - Profit Intelligence', message:o.whyProfitChanged || 'Profit anomaly', recommendedAction:'Review loss-making products'});\n    break; }\n  case 'analyst': {\n    d = {...d, decision:'INVESTIGATION_COMPLETE', action:'PUBLISH_ANALYSIS_REPORT', actionType:'report', risk:'MEDIUM', reason:o.mostLikelyCause || d.reason};\n    const X = {sales_anomaly:['SALES_ANOMALY','HIGH'], revenue_drop:['SALES_ANOMALY','HIGH'], high_return_rate:['HIGH_RETURNS','HIGH'], high_ad_spend:['AD_SPEND_ANOMALY','MEDIUM']}[e.eventType];\n    if (X) excs.push({type:X[0], severity:X[1], source:'AGENT - Ecommerce Analyst', message:e.eventType + ': ' + (o.mostLikelyCause || 'cause unknown'), recommendedAction:(o.recommendedActions || [])[0] || 'Investigate'});\n    break; }\n  case 'coo': d = {...d, decision:'EXECUTIVE_SUMMARY_READY', action:'PUBLISH_EXECUTIVE_SUMMARY', actionType:'report', risk:(o.topProblems || []).length >= 3 ? 'MEDIUM' : 'LOW'}; break;\n}\nif ((ctx.missing || []).length) excs.push({type:'MISSING_DATA', severity:'MEDIUM', source:$json.agent, message:'Missing data: ' + ctx.missing.join(', '), recommendedAction:'Verify the record exists in the data source'});\nconst SENSITIVE = ['refund','price_change','purchase_order','discount_large','customer_compensation','data_update','public_response','vip_action','financial','listing_publish'];\nconst PASSIVE = ['report','internal_log','internal_update','human_task'];\nconst why = [];\nlet requiresApproval = SENSITIVE.includes(d.actionType);\nif (requiresApproval) why.push('POLICY_SENSITIVE_ACTION');\nif (conf < cfg.lowConfidenceThreshold) {\n  excs.push({type:'AI_LOW_CONFIDENCE', severity:'MEDIUM', source:$json.agent, message:`${$json.agent} confidence ${conf} is below ${cfg.lowConfidenceThreshold}`, recommendedAction:'Human review of the proposed action'});\n  if (!PASSIVE.includes(d.actionType)) { requiresApproval = true; why.push('LOW_CONFIDENCE'); }\n}\nif (['HIGH','CRITICAL'].includes(d.risk) && !PASSIVE.includes(d.actionType)) { requiresApproval = true; if (!why.includes('HIGH_RISK')) why.push('HIGH_RISK'); }\nconst decision = {decisionId:'dec-' + e.eventId + '-' + M, eventId:e.eventId, agent:$json.agent || 'Unknown Agent', decision:d.decision, action:d.action, confidence:conf, riskLevel:d.risk,\n  reason:d.reason || String(o.reason || ''), requiresApproval, status:requiresApproval ? 'PENDING_APPROVAL' : 'APPROVED_AUTO', actionType:d.actionType, target:d.target, params:d.params, approvalReasons:why};\nreturn {json:{...$json, decision, exceptions:excs, followUpEvents:depth < 1 ? follow : []}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Decision & Risk Policy\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "24308dee-cfba-4912-a104-1ee9ed10fe54",
+      "name": "SYSTEM - Decision & Risk Policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dc713d96-0c0f-4195-817a-f08a1745d6d8",
+              "leftValue": "={{ String($json.decision && $json.decision.requiresApproval === true) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "741f1ece-4bda-4093-86ad-765a524132ec",
+      "name": "SYSTEM - Approval Required",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst j = $json, d = j.decision, e = j.event, cfg = j.config;\nconst sd = $getWorkflowStaticData('global'); sd.approvals = sd.approvals || {};\nconst now = Date.now();\nfor (const k of Object.keys(sd.approvals)) { if (now - new Date(sd.approvals[k].approval.requestedAt).getTime() > 7 * 86400000) delete sd.approvals[k]; }\nconst id = 'apr-' + d.decisionId;\nlet approval = {approvalId:id, actionType:d.actionType, requestedAction:`${d.action} (${d.decision})`, reason:`${(d.approvalReasons || []).join(', ')}: ${d.reason}`.slice(0, 500),\n  riskLevel:d.riskLevel, requestedAt:new Date().toISOString(), status:'PENDING', eventId:e.eventId, decisionId:d.decisionId, agent:d.agent,\n  howToDecide:'POST /webhook/ecom-approval with {\"approvalId\":\"' + id + '\",\"approved\":true,\"approver\":\"your-name\"}'};\nlet decision = {...d};\nif (cfg.simulateApproval === true) { approval = {...approval, status:'APPROVED', decidedBy:'SIMULATED_TEST_APPROVER', decidedAt:new Date().toISOString()}; decision = {...d, status:'APPROVED_BY_HUMAN'}; }\nconst snapshot = {event:e, config:cfg, module:j.module, agent:j.agent, moduleOutput:j.moduleOutput, exceptions:j.exceptions || [], followUpEvents:[], decision:d};\nsd.approvals[id] = {approval, snapshot};\nreturn {json:{...j, approval, decision, notification:`Approval needed [${d.riskLevel}] ${d.action}: ${d.reason}`.slice(0, 300)}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Create Approval Request\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "42d82a42-b394-474f-80ae-d36a4213a114",
+      "name": "SYSTEM - Create Approval Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        1552
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8a449f51-0f45-4da5-9b47-c4b48194c72f",
+      "name": "SYSTEM - Notify Approver (Placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ecom-approval",
+        "options": {}
+      },
+      "id": "915a89b7-9049-419d-a717-5b6d0972dfcf",
+      "name": "SYSTEM - Approval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        1888
+      ],
+      "webhookId": "405cacec-8774-49a9-b7d2-1e02ff01cf99"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst sd = $getWorkflowStaticData('global'); sd.approvals = sd.approvals || {};\nconst aid = String(body.approvalId || '');\nconst rec = sd.approvals[aid];\nconst miss = (status, msg) => ({json:{event:{eventId:'approval-' + (aid || 'unknown'), eventType:'unknown_event', source:'approval_webhook', payload:{}, metadata:{}}, agent:'Approval Handler', approval:{approvalId:aid, status}, exceptions:[{type:'APPROVAL_' + status, severity:'MEDIUM', source:'SYSTEM - Process Approval', message:msg, recommendedAction:'Check the approvalId'}]}});\nif (!rec) return miss('NOT_FOUND', 'Approval id not found or expired');\nif (rec.approval.status !== 'PENDING') return miss('ALREADY_DECIDED', 'Approval already ' + rec.approval.status);\nconst approved = body.approved === true || String(body.approved).toLowerCase() === 'true' || String(body.decision || '').toUpperCase() === 'APPROVE';\nrec.approval = {...rec.approval, status: approved ? 'APPROVED' : 'REJECTED', decidedBy: String(body.approver || 'unknown'), decidedAt: new Date().toISOString(), comment: String(body.comment || '').slice(0, 300)};\nreturn {json:{...rec.snapshot, approval: rec.approval, decision:{...rec.snapshot.decision, status: approved ? 'APPROVED_BY_HUMAN' : 'REJECTED_BY_HUMAN'}}};"
+      },
+      "id": "e6fb46f1-1bb6-49aa-9ca1-d1470ef506e6",
+      "name": "SYSTEM - Process Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        1888
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c0398710-8976-4334-a281-7efdae849217",
+              "leftValue": "={{ String($json.approval && $json.approval.status === 'APPROVED') }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b09a41b1-54f2-4608-bd12-75363c8ca426",
+      "name": "SYSTEM - Approval Granted",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2192,
+        1632
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst j = $json, d = j.decision, e = j.event || {}, cfg = j.config || {};\nconst sd = $getWorkflowStaticData('global'); sd.executed = sd.executed || {};\nconst now = Date.now();\nfor (const k of Object.keys(sd.executed)) { if (now - sd.executed[k] > 72 * 3600000) delete sd.executed[k]; }\nconst base = {executionId:'exe-' + ((d && d.decisionId) || e.eventId || now), decisionId:(d && d.decisionId) || '', action:(d && d.action) || 'NONE', target:(d && d.target) || '', timestamp:new Date().toISOString(), error:null};\nif (!d || !d.action || d.action === 'NONE') return {json:{...j, execution:{...base, mode:'SKIP', skipReason:'no action to execute', status:'PENDING', result:{}}}};\nconst p = d.params || {};\nconst key = [e.eventId, d.action, p.sku || p.orderId || p.customerId || p.reviewId || ''].join('|');\nconst INTERNAL = ['LOG_ONLY','GENERATE_PRODUCT_REPORT','PUBLISH_PROFIT_REPORT','PUBLISH_ANALYSIS_REPORT','PUBLISH_EXECUTIVE_SUMMARY','UPDATE_CUSTOMER_SEGMENT','CREATE_HUMAN_REVIEW_TASK'];\nconst mode = sd.executed[key] ? 'SKIP' : INTERNAL.includes(d.action) ? 'INTERNAL' : cfg.dryRun !== false ? 'DRY_RUN' : 'API';\nif (mode !== 'SKIP') sd.executed[key] = now;\nconst url = 'https://api.placeholder.invalid/' + encodeURIComponent(d.target || 'target') + '/' + d.action.toLowerCase();\nreturn {json:{...j, execution:{...base, idempotencyKey:key, mode, skipReason: mode === 'SKIP' ? 'duplicate execution prevented (idempotency)' : '', method:'POST', url, body:{idempotencyKey:key, eventId:e.eventId, action:d.action, params:p}, status:'PENDING', result:{}}}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Execute Action\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "a77e524c-ade4-4d91-a607-be64b568126c",
+      "name": "SYSTEM - Execute Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b8db0672-f42d-47cc-80d4-af5974273ca3",
+              "leftValue": "={{ String($json.execution && $json.execution.mode === 'API') }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b09baa6b-d59e-4bef-af45-4c0cdfb99fae",
+      "name": "SYSTEM - Execution Mode Is API",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2704,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.execution.method }}",
+        "url": "={{ $json.execution.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.execution.idempotencyKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.execution.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "ad66094a-91e4-4945-b3fb-fc617faffa4c",
+      "name": "SYSTEM - Execute API Call (Placeholder)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2960,
+        1216
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SyH13B2i0vxyMII8",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst ex = $json.execution;\nlet status, result;\nif (ex.mode === 'SKIP') { status = 'SKIPPED'; result = {reason: ex.skipReason || 'nothing to do'}; if (/duplicate/.test(ex.skipReason || '')) status = 'SKIPPED_DUPLICATE'; }\nelse if (ex.mode === 'DRY_RUN') { status = 'DRY_RUN_VERIFIED'; result = {ok:true, simulated:true, requestPreview:{method:ex.method, url:ex.url, body:ex.body}}; }\nelse { status = 'VERIFIED'; result = {ok:true, recordedInternally:true, action:ex.action}; }\nreturn {json:{...$json, execution:{...ex, status, result}}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Execute Internal Or Dry Run\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "16ccfb2f-5180-4263-925d-b54cb500c5db",
+      "name": "SYSTEM - Execute Internal Or Dry Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst ctx = $('SYSTEM - Execution Mode Is API').item.json, cur = $json;\nconst sd = $getWorkflowStaticData('global'); sd.executed = sd.executed || {};\nlet item = cur, ex = cur.execution, verification;\nif (ctx.execution && ctx.execution.mode === 'API') {\n  item = ctx; ex = ctx.execution;\n  const sc = cur.statusCode, ok = !cur.error && sc >= 200 && sc < 300;\n  ex = {...ex, status: ok ? 'EXECUTED' : 'FAILED', result:{statusCode: sc ?? null, body: cur.body ?? null}, error: ok ? null : String((cur.error && cur.error.message) || ('HTTP ' + sc))};\n  verification = {method:'http_status', verified: ok, note:'Add a read-back GET here to confirm the change in the target system.'};\n} else {\n  verification = {method: ex.mode, verified: ex.status !== 'FAILED', note: ex.mode === 'DRY_RUN' ? 'Dry run: nothing external was changed.' : ''};\n}\nconst excs = [...(item.exceptions || [])];\nif (ex.status === 'FAILED') {\n  delete sd.executed[ex.idempotencyKey];\n  excs.push({type:'EXECUTION_FAILURE', severity:'HIGH', source:'SYSTEM - Verify Action', message:`Action ${ex.action} failed: ${ex.error}`, recommendedAction:'Check the target API and retry'});\n}\nconst decision = item.decision ? {...item.decision, status: ex.status} : item.decision;\nreturn {json:{...item, execution: ex, verification, decision, exceptions: excs}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Verify Action\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "bb048838-6d1b-4a97-9945-cd2c2961c9fb",
+      "name": "SYSTEM - Verify Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3232,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst j = $json, e = j.event || {}, d = j.decision || null, ex = j.execution || null, ap = j.approval || null;\nconst sd = $getWorkflowStaticData('global'); sd.log = sd.log || [];\nconst ts = new Date().toISOString();\nlet status;\nif (j.isDuplicate) status = 'DUPLICATE_SKIPPED';\nelse if (ap && ap.status === 'PENDING') status = 'PENDING_APPROVAL';\nelse if (ap && ap.status === 'REJECTED') status = 'REJECTED';\nelse if (ap && ['NOT_FOUND','ALREADY_DECIDED'].includes(ap.status)) status = ap.status;\nelse if (ex) status = ex.status;\nelse if (d) status = d.status;\nelse status = 'EXCEPTION_RECORDED';\nconst excs = (j.exceptions || []).map((x, i) => ({exceptionId:'exc-' + (e.eventId || 'na') + '-' + i, eventType:e.eventType || '', severity:x.severity || 'MEDIUM', source:x.source || e.source || '', message:String(x.message || x.type || ''), recommendedAction:x.recommendedAction || 'Review', status:'OPEN', timestamp:ts, type:x.type || ''}));\nconst log = {timestamp:ts, eventId:e.eventId || '', agent: d ? d.agent : (j.agent || 'System'), eventType:e.eventType || '', decision: d ? d.decision : '', action: d ? d.action : '', confidence: d ? d.confidence : null, riskLevel: d ? d.riskLevel : '',\n  reason: d ? d.reason : ((excs[0] && excs[0].message) || ''), status, result: ex ? ex.result : null, error: ex ? ex.error : null};\nsd.log.push(log); if (sd.log.length > 200) sd.log.splice(0, sd.log.length - 200);\nconst escalate = excs.some(x => ['HIGH','CRITICAL'].includes(x.severity));\nreturn {json:{...j, logRecord:log, exceptionRecords:excs, escalate}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Log Decision\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "dab3af73-78cd-4d25-834d-3f8fad4c4314",
+      "name": "SYSTEM - Log Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f4188f3f-8a14-4e62-a95b-4715c333e861",
+              "leftValue": "={{ String($json.escalate === true) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c624e95e-28eb-49ea-a280-516bd77ac07e",
+      "name": "SYSTEM - Needs Escalation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3744,
+        1328
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "a52f22af-c4ed-4d64-9dbc-224f7338a090",
+      "name": "SYSTEM - Escalate To Human (Placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4000,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst j = $json, sd = $getWorkflowStaticData('global');\nconst a = sd.analytics = sd.analytics || {total:0, byModule:{}, byStatus:{}, exceptions:0, approvalsPending:0, executed:0, recoveryAttempts:0, recoveredRevenue:0};\nconst l = j.logRecord || {}, m = j.module || 'system';\na.total++; a.byModule[m] = (a.byModule[m] || 0) + 1; a.byStatus[l.status] = (a.byStatus[l.status] || 0) + 1;\na.exceptions += (j.exceptionRecords || []).length;\nif (l.status === 'PENDING_APPROVAL') a.approvalsPending++;\nif (/EXECUTED|VERIFIED/.test(l.status || '')) a.executed++;\nif (m === 'revenue' && j.moduleOutput && j.moduleOutput.recoveryStatus === 'PLANNED') a.recoveryAttempts++;\nreturn {json:{...j, analyticsRow:{timestamp:new Date().toISOString(), eventId:(j.event && j.event.eventId) || '', module:m, status:l.status || '', riskLevel:l.riskLevel || '', confidence:l.confidence, totalProcessed:a.total, approvalsPending:a.approvalsPending, exceptionsRecorded:a.exceptions, executed:a.executed, recoveryAttempts:a.recoveryAttempts, recoveredRevenue:a.recoveredRevenue}}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"ANALYTICS - Record Metrics\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "92be1fc7-bcf4-4b31-ab4d-bf8e297549f1",
+      "name": "ANALYTICS - Record Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4272,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ce88cb2d-d4e8-4839-bc3e-058be0f3eab0",
+              "leftValue": "={{ String(($json.followUpEvents || []).length > 0) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "76ad3485-dbff-4189-8725-ba3a7cfd3aaa",
+      "name": "SYSTEM - Has Follow-ups",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4528,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// COO / Support delegation: each follow-up event re-enters the master pipeline (depth is capped at 1 to prevent loops)\nconst out = [];\nfor (const it of $input.all()) {\n  for (const ev of (it.json.followUpEvents || [])) {\n    if (Number((ev.metadata || {}).depth || 0) <= 1) out.push({json: ev});\n  }\n}\nreturn out;"
+      },
+      "id": "4d1b1592-7c60-4f3d-ae42-4a9b57a31355",
+      "name": "SYSTEM - Emit Follow-up Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4784,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nconst flat = o => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, v !== null && typeof v === 'object' ? JSON.stringify(v) : v]));\nfor (const it of $input.all()) {\n  const j = it.json;\n  if (j.logRecord) out.push({json:{table:'logs', ...flat(j.logRecord)}});\n  if (j.decision) out.push({json:{table:'decisions', ...flat(j.decision)}});\n  if (j.execution && j.execution.mode) out.push({json:{table:'executions', ...flat(j.execution)}});\n  (j.exceptionRecords || []).forEach(x => out.push({json:{table:'exceptions', ...flat(x)}}));\n  if (j.approval && j.approval.requestedAt) out.push({json:{table:'approvals', ...flat(j.approval)}});\n  if (j.analyticsRow) out.push({json:{table:'analytics', ...flat(j.analyticsRow)}});\n}\nreturn out;"
+      },
+      "id": "7bdeed7c-5a70-458a-82c0-90ab5f3cf4b5",
+      "name": "STORE - Flatten Log Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4528,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "try {\n\nconst j = $json;\nif (j.workflow && j.execution && !j.event) {\n  const ex = j.execution, msg = String((ex.error && ex.error.message) || 'Unknown workflow error').slice(0, 300);\n  return {json:{event:{eventId:'err-' + (ex.id || Date.now()), eventType:'unknown_event', source:'n8n', timestamp:new Date().toISOString(), payload:{}, metadata:{}}, module:'exception', agent:'Exception Manager',\n    exceptions:[{type:'WORKFLOW_ERROR', severity:'CRITICAL', source:String(ex.lastNodeExecuted || 'unknown'), message:msg, recommendedAction:'Inspect execution ' + (ex.id || '') + ' and retry'}]}};\n}\nconst e = j.event || {eventType:'unknown_event', payload:{}};\nconst excs = [...(j.exceptions || [])];\nif (e.eventType === 'order_exception') excs.push({type:'ORDER_EXCEPTION', severity:'HIGH', source:e.source, message:String((e.payload && e.payload.message) || 'Order exception reported'), recommendedAction:'Review the order and contact the customer if needed'});\nelse if (e.eventType === 'unknown_event') excs.push({type:'UNKNOWN_EVENT', severity:'MEDIUM', source:e.source, message:'Event could not be classified', recommendedAction:'Review payload and extend the router if this is a new event type'});\nelse excs.push({type:'ROUTING_FAILURE', severity:'MEDIUM', source:e.source, message:'No module available for ' + e.eventType, recommendedAction:'Extend the master router'});\nreturn {json:{...j, module:'exception', agent:'Exception Manager', exceptions:excs}};\n\n} catch (err) {\n  const j = $json || {};\n  return {json:{...j, exceptions:[...(j.exceptions || []), {type:'NODE_FAILURE', severity:'HIGH', source:\"SYSTEM - Exception Handler\", message:String(err && err.message || err).slice(0, 300), recommendedAction:'Inspect node and input data'}]}};\n}"
+      },
+      "id": "3635e33e-1047-4615-a64e-368bc00854cc",
+      "name": "SYSTEM - Exception Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        2928
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "47e971ef-1fd6-4068-8185-0949b3f138b3",
+      "name": "SYSTEM - Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        3120
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "=   🚨 {{ $json.exceptionRecords[0].severity }}: {{ $json.exceptionRecords[0].type }}    {{ $json.exceptionRecords[0].message }}    Action: {{ $json.exceptionRecords[0].recommendedAction }}    Event: {{ $json.event.eventType }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4432,
+        1168
+      ],
+      "id": "921c3fcf-ca6b-492d-b351-9d0532fd778c",
+      "name": "Send a text message",
+      "webhookId": "fc15bf71-16e6-4f8d-bc94-4be78c4420c5",
+      "credentials": {
+        "telegramApi": {
+          "id": "fxRZ1Tfm81FlZEb7",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "=1yFbybQEZrkjFnajo2J6TWFRa6S1tI6NkmWz25nl38ks",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $json.table }}"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "0c71f1e5-bc7a-454e-b489-56044ee58cdc",
+      "name": "STORE - Append To Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5664,
+        1632
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PuhsrSnOv0NIFQN6",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MASTER - Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Test Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Test Event": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Normalize Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Webhook Event Ingest": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Normalize Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Daily Review Schedule": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Scheduled Review Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Scheduled Review Event": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Normalize Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Normalize Event": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Log Decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MASTER - Classify Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Classify Event": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Load Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Load Context": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Event Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MASTER - Event Router": {
+      "main": [
+        [
+          {
+            "node": "AGENT - Product Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Listing Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Order Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Inventory Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Pricing Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Customer Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Customer Support",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Review Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Returns Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Revenue Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Profit Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Ecommerce Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AGENT - Ecommerce COO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SYSTEM - Exception Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SYSTEM - Exception Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Product Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Listing Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Order Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Inventory Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Pricing Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Customer Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Customer Support": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Review Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Returns Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Revenue Recovery": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Profit Intelligence": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Ecommerce Analyst": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENT - Ecommerce COO": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - AI Gate": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - AI Reasoning (LLM HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SYSTEM - Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - AI Reasoning (LLM HTTP)": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Decision & Risk Policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Decision & Risk Policy": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Approval Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Approval Required": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Create Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SYSTEM - Execute Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Create Approval Request": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Notify Approver (Placeholder)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Notify Approver (Placeholder)": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Approval Granted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Process Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Process Approval": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Approval Granted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Approval Granted": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Execute Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SYSTEM - Log Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Execute Action": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Execution Mode Is API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Execution Mode Is API": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Execute API Call (Placeholder)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SYSTEM - Execute Internal Or Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Execute API Call (Placeholder)": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Verify Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Execute Internal Or Dry Run": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Verify Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Verify Action": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Log Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Exception Handler": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Log Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Exception Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Log Decision": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Needs Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Needs Escalation": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Escalate To Human (Placeholder)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ANALYTICS - Record Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Escalate To Human (Placeholder)": {
+      "main": [
+        [
+          {
+            "node": "ANALYTICS - Record Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ANALYTICS - Record Metrics": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Has Follow-ups",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "STORE - Flatten Log Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Has Follow-ups": {
+      "main": [
+        [
+          {
+            "node": "SYSTEM - Emit Follow-up Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SYSTEM - Emit Follow-up Events": {
+      "main": [
+        [
+          {
+            "node": "MASTER - Normalize Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STORE - Flatten Log Rows": {
+      "main": [
+        [
+          {
+            "node": "STORE - Append To Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4964bc82-fc7b-4e2a-92ff-80f3a92320f4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f9214f644faefcbd163a49527dd7da0582af489ef606043ead44f1cbc142237"
+  },
+  "nodeGroups": [],
+  "id": "Y45Gdb4OgqjOKB7O",
+  "tags": []
+}

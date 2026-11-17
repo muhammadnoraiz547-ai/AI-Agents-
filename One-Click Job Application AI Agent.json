@@ -1,0 +1,992 @@
+{
+  "name": "One-Click Job Application AI Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1ec64e2e-6177-4f86-bad4-eff622719c7b",
+      "name": "🕘 Daily Application Trigger",
+      "type": "n8n-nodes-base.cron",
+      "position": [
+        -320,
+        -112
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": " spreadsheetURL",
+              "stringValue": "https://docs.google.com/spreadsheets/d/1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc/edit?gid=2002697196#gid=2002697196"
+            },
+            {
+              "name": " notificationEmail",
+              "stringValue": "muhammadnoraiz547@gmail.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3cfd406f-4b14-4919-a699-e4305cef6804",
+      "name": "⚙️ Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -96,
+        -112
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "=https://docs.google.com/spreadsheets/d/1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc/edit?gid=909896281#gid=909896281",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Jobs",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "0ffe8f29-6f6f-4362-b435-505fefbd372d",
+      "name": "📖 Read Jobs Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        128,
+        -112
+      ],
+      "typeVersion": 4,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xJmsScZElNaFod8U",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "not-applied",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Not Applied"
+            },
+            {
+              "id": "has-url",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              },
+              "leftValue": "={{ $json.Job_URL }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "dc95dac9-89e4-4b33-86b1-2dc461e00488",
+      "name": "🎯 Filter Pending Applications",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        352,
+        -112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "batchSize": 4,
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "90b1476f-ed40-4b2f-bf1c-62e913030ed2",
+      "name": "🔄 Process Jobs One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        528,
+        -256
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "resumeUrl  ",
+              "stringValue": "={{ $json.Resume_Version }}"
+            },
+            {
+              "name": "personalizedCoverLetter",
+              "stringValue": "={{ $json.Cover_Letter }}"
+            },
+            {
+              "name": "=Job_ID       ",
+              "stringValue": "={{ $json['Job_ID'] }} "
+            },
+            {
+              "name": "= platform",
+              "stringValue": "={{ $json['Platform'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f3574c3b-47e6-4783-ae0b-db77e3cbd1c1",
+      "name": "📝 Prepare Application Data",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        720,
+        -64
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Platform }}",
+                    "rightValue": "LinkedIn",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "16ff36e6-e919-472b-98a3-3ddc1d80e5bb"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "f521dcd7-8879-4ab7-8db3-d2c486de81e3",
+                    "leftValue": "={{ $json.Platform }}",
+                    "rightValue": "Indeed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7540d407-52e0-48e0-a30d-bb1651d6cc2d",
+      "name": "🔀 Route by Platform",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        1024,
+        -64
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=🔔 Apply Now: {{ $json.Job_Title }} at {{ $json.Company }}",
+        "emailType": "text",
+        "message": "=Hello!  Aaj apply karna hai:  🏢 Company: {{ $json.Company }} 💼 Position: {{ $json.Job_Title }} 🌐 Platform: {{ $json.Platform }} 💰 Salary: {{ $json.Salary_Range }} 📍 Location: {{ $json.Location }}  👉 Apply Link: {{ $json.Job_URL }}  Good Luck! 🚀",
+        "options": {}
+      },
+      "id": "72ed7cf0-8076-441a-be28-65c7563b15ed",
+      "name": "📧 Send Application Notification",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1024,
+        -224
+      ],
+      "typeVersion": 2,
+      "webhookId": "c00bec26-f9f4-441f-baff-2fd702d9b891",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "4af2d5f8-4730-4507-ace4-f58e816e578b",
+      "name": "🕐 Status Check Trigger",
+      "type": "n8n-nodes-base.cron",
+      "position": [
+        -320,
+        224
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "=https://docs.google.com/spreadsheets/d/1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc/edit?gid=909896281#gid=909896281",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Jobs",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "c284e021-85e4-45ab-bf79-a8b2da66fa73",
+      "name": "📖 Read Applied Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        -96,
+        224
+      ],
+      "typeVersion": 4,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xJmsScZElNaFod8U",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "applied-filter",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Applied"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4a7178b-7f55-464a-964e-e3f09d41a662",
+      "name": "🎯 Filter Applied Jobs",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        128,
+        224
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "3733deca-8d23-47bc-8877-e0591d815bd0",
+      "name": "🔄 Check Status One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        352,
+        224
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2a502261-c708-48be-af84-bde4ff021de7",
+      "name": "🔍 Mock Status Check",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        576,
+        224
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "status-changed",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "={{ $json.newStatus }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e836381-108a-4d0a-b5d7-57baf84f080d",
+      "name": "🔄 Check if Status Changed",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        784,
+        224
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "=https://docs.google.com/spreadsheets/d/1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc/edit?gid=909896281#gid=909896281",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Jobs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Job_ID": "={{ $json.Job_ID }}",
+            "Status": "={{ $json.Status }}",
+            "Last_Checked": "={{ $now.format('yyyy-MM-dd') }}"
+          },
+          "matchingColumns": [
+            "Job_ID"
+          ],
+          "schema": [
+            {
+              "id": "Job_ID",
+              "displayName": "Job_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Job_Title",
+              "displayName": "Job_Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Platform",
+              "displayName": "Platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Job_URL",
+              "displayName": "Job_URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied_Date",
+              "displayName": "Applied_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Resume_Version",
+              "displayName": "Resume_Version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Cover_Letter",
+              "displayName": "Cover_Letter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Salary_Range",
+              "displayName": "Salary_Range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Last_Checked",
+              "displayName": "Last_Checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7c3e611e-1f2e-4756-8c90-1b55fcc9c854",
+      "name": "📝 Update Changed Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1024,
+        208
+      ],
+      "typeVersion": 4,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xJmsScZElNaFod8U",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=🔔 Status Update: {{ $json.Job_Title }} at {{ $json.Company }}",
+        "emailType": "text",
+        "message": "=Hello!  Aapki application ka status update hua hai:  🏢 Company:     {{ $json.Company }} 💼 Position:    {{ $json.Job_Title }} 🌐 Platform:    {{ $json.Platform }} 📍 Location:    {{ $json.Location }}  📊 Old Status:  {{ $json.Status }} ✅ New Status:  {{ $json.newStatus }}  👉 Job Link: {{ $json.Job_URL }}  📝 Notes: {{ $json.Notes }}  Good Luck! 🚀",
+        "options": {}
+      },
+      "id": "6660018a-5e02-4120-ae93-1b46cd462eaf",
+      "name": "📧 Send Status Update",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1232,
+        208
+      ],
+      "typeVersion": 2,
+      "webhookId": "1c8858bd-ef74-4762-b925-38560c8ee942",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc",
+          "mode": "list",
+          "cachedResultName": "Untitled spreadsheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 909896281,
+          "mode": "list",
+          "cachedResultName": "Jobs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JD_vGEEtrhSetNJWCodlSeOibwZgedz_A02ImOB9NEc/edit#gid=909896281"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Reminder Sent",
+            "Last_Checked": "={{ $now.format('yyyy-MM-dd') }}",
+            "Job_ID": "={{ $('🔀 Route by Platform').item.json.Job_ID }}"
+          },
+          "matchingColumns": [
+            "Job_ID"
+          ],
+          "schema": [
+            {
+              "id": "Job_ID",
+              "displayName": "Job_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Job_Title",
+              "displayName": "Job_Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Platform",
+              "displayName": "Platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Job_URL",
+              "displayName": "Job_URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied_Date",
+              "displayName": "Applied_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Resume_Version",
+              "displayName": "Resume_Version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Cover_Letter",
+              "displayName": "Cover_Letter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Salary_Range",
+              "displayName": "Salary_Range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Last_Checked",
+              "displayName": "Last_Checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Response",
+              "displayName": "Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1264,
+        -224
+      ],
+      "id": "e2e5cfb5-08c3-4ea3-8b2b-efc42abaab1d",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aHzk3HG8HO9z5V3C",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "⚙️ Configuration": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Jobs Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Jobs Sheet": {
+      "main": [
+        [
+          {
+            "node": "🎯 Filter Pending Applications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Applied Jobs": {
+      "main": [
+        [
+          {
+            "node": "🎯 Filter Applied Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Route by Platform": {
+      "main": [
+        [
+          {
+            "node": "📧 Send Application Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📧 Send Application Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Mock Status Check": {
+      "main": [
+        [
+          {
+            "node": "🔄 Check if Status Changed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Filter Applied Jobs": {
+      "main": [
+        [
+          {
+            "node": "🔄 Check Status One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕐 Status Check Trigger": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Applied Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Update Changed Status": {
+      "main": [
+        [
+          {
+            "node": "📧 Send Status Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Check Status One by One": {
+      "main": [
+        [
+          {
+            "node": "🔍 Mock Status Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔍 Mock Status Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Check if Status Changed": {
+      "main": [
+        [
+          {
+            "node": "📝 Update Changed Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Process Jobs One by One": {
+      "main": [
+        [],
+        [
+          {
+            "node": "📝 Prepare Application Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Prepare Application Data": {
+      "main": [
+        [
+          {
+            "node": "🔀 Route by Platform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕘 Daily Application Trigger": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Filter Pending Applications": {
+      "main": [
+        [
+          {
+            "node": "🔄 Process Jobs One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Send Application Notification": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f717b984-e2ea-445c-8752-c1d780e23b42",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6663fb0ceae351519fb7113786d61d371bf68fe6df92a95cc475ad605725fd5d"
+  },
+  "id": "4EoQ2MylVteDqdY0",
+  "tags": []
+}

@@ -1,0 +1,758 @@
+{
+  "name": "YouTube Comment Intelligence Pipeline - agent",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.items",
+        "options": {}
+      },
+      "id": "7677397f-8b7b-4428-84c9-b25a0e8f6fe9",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        2160,
+        800
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "bce76f94-5904-4fdb-b172-adc1134855f9",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ecc0c645-7297-4279-be21-7f623d84dd6d",
+      "name": "If - Check Success Response",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1936,
+        880
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8",
+          "mode": "list",
+          "cachedResultName": "video-url",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "videoId": "={{ $json.videoId }}",
+            "Video URL": "={{ $json['Video URL'] }}",
+            "Title": "={{ $json.Title }}",
+            "Channel Name": "={{ $json['Channel Name'] }}",
+            "Duration": "={{ $json.Duration }}",
+            "Views (approx)": "={{ $json['Views (approx)'] }}"
+          },
+          "matchingColumns": [
+            "videoId"
+          ],
+          "schema": [
+            {
+              "id": "videoId",
+              "displayName": "videoId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Video URL",
+              "displayName": "Video URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Channel Name",
+              "displayName": "Channel Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Views (approx)",
+              "displayName": "Views (approx)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f0d9fee0-dded-486e-90a6-0992c14c4731",
+      "name": "Google Sheets - Update Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2864,
+        880
+      ],
+      "executeOnce": true,
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ykaP9mOWqWAe1YeS",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "47690f02-9a22-4bc7-8ee7-112b1c9d9b0b",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        1312,
+        1264
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8bf50878-b1b3-45dd-9639-98238fcef579",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json['Video URL'] }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ab7d7339-f848-4ea3-9370-4d9c6a36515a",
+      "name": "If - Check Video Url is Not Empty",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1040,
+        1280
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/commentThreads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "snippet,replies"
+            },
+            {
+              "name": "videoId",
+              "value": "={{ $json.extractedVideoId }}"
+            },
+            {
+              "name": "maxResults",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "3b3e13e1-1ac9-4e86-b1b5-b67547a4fc80",
+      "name": "HTTP Request - Get Comments",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1712,
+        976
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "2xVAu2hdOPyTic9V",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "e4d47098-097d-4fd7-9703-638858f9565a",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.snippet.videoId }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1c18c3c-8eb7-42a8-b2dd-1d98199a20f3",
+      "name": "If - Check Comment Exists",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2384,
+        800
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8",
+          "mode": "list",
+          "cachedResultName": "video-url",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "95fa0de2-7dbd-4ce3-be2b-1f3aa0a25f9b",
+      "name": "Google Sheets - Get Video URLs",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1040,
+        1008
+      ],
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ykaP9mOWqWAe1YeS",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8",
+          "mode": "list",
+          "cachedResultName": "video-url",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Video URL": "={{ \"https://www.youtube.com/watch?v=\" + $json.snippet.videoId }}",
+            "Title": "={{ $json.snippet.topLevelComment.snippet.textDisplay }}",
+            "Channel Name": "={{ $json.snippet.topLevelComment.snippet.authorDisplayName }}",
+            "Duration": "=Comment",
+            "Views (approx)": "={{ $json.snippet.topLevelComment.snippet.likeCount }}",
+            "videoId": "={{ $json.snippet.videoId }}"
+          },
+          "matchingColumns": [
+            "videoId"
+          ],
+          "schema": [
+            {
+              "id": "videoId",
+              "displayName": "videoId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Video URL",
+              "displayName": "Video URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Channel Name",
+              "displayName": "Channel Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Views (approx)",
+              "displayName": "Views (approx)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "4aab513c-f3f7-4014-92e7-95a584f8d35b",
+      "name": "Google Sheets - Insert/Update Comment",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2608,
+        752
+      ],
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ykaP9mOWqWAe1YeS",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b22f440c-caac-4812-8ec4-02ee4aaeb85a",
+      "name": "Test Workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        1024,
+        752
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8",
+          "mode": "list",
+          "cachedResultName": "video-url",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NCNJQF9YLFT-3iAgjgsoMh5POQ9s0gVjQ-XA9F98YV8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Views (approx)": "={{ $json.snippet.topLevelComment.snippet.likeCount }}",
+            "Duration": "Comment",
+            "Channel Name": "={{ $json.snippet.topLevelComment.snippet.authorDisplayName }}",
+            "Title": "={{ $json.snippet.topLevelComment.snippet.textDisplay }}",
+            "Video URL": "={{ \"https://www.youtube.com/watch?v=\" + $json.snippet.videoId }}",
+            "Video ID": "={{ $json.snippet.videoId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Video ID",
+              "displayName": "Video ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video URL",
+              "displayName": "Video URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Channel Name",
+              "displayName": "Channel Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Views (approx)",
+              "displayName": "Views (approx)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "29abcb72-024c-43bb-a726-ba513f12f0fb",
+      "name": "Google Sheets - Update Status - Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2608,
+        976
+      ],
+      "typeVersion": 4.6,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ykaP9mOWqWAe1YeS",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const videoUrl = item.json['Video URL'];\n  \n  if (!videoUrl) {\n    // Skip empty URLs\n    results.push({\n      json: {\n        ...item.json,\n        extractedVideoId: null,\n        error: 'No video URL found'\n      }\n    });\n    continue;\n  }\n\n  // Try different URL patterns\n  const patterns = [\n    /(?:youtube\\.com\\/watch\\?v=)([a-zA-Z0-9_-]{11})/,\n    /(?:youtu\\.be\\/)([a-zA-Z0-9_-]{11})/,\n    /(?:youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})/,\n    /(?:youtube\\.com\\/v\\/)([a-zA-Z0-9_-]{11})/\n  ];\n\n  let videoId = null;\n\n  for (const pattern of patterns) {\n    const match = videoUrl.match(pattern);\n    if (match && match[1]) {\n      videoId = match[1];\n      break;\n    }\n  }\n\n  if (!videoId) {\n    results.push({\n      json: {\n        ...item.json,\n        extractedVideoId: null,\n        error: `Could not extract video ID from: ${videoUrl}`\n      }\n    });\n  } else {\n    results.push({\n      json: {\n        ...item.json,\n        extractedVideoId: videoId\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        816
+      ],
+      "id": "873973bc-d478-47ba-9841-5fb0c28cbd07",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1936,
+        1072
+      ],
+      "id": "748c9668-a394-42df-a7ba-2e8717e5465e",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "If - Check Comment Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Workflow": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Get Video URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Check Comment Exists": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Insert/Update Comment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets - Update Status - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Comments": {
+      "main": [
+        [
+          {
+            "node": "If - Check Success Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Check Success Response": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets - Update Status - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Update Status": {
+      "main": [
+        []
+      ]
+    },
+    "Google Sheets - Get Video URLs": {
+      "main": [
+        [
+          {
+            "node": "If - Check Video Url is Not Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Check Video Url is Not Empty": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Insert/Update Comment": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Update Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Update Status - Error": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Comments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4409f11e-d467-4d23-b27e-6167ed91c66b",
+  "meta": {
+    "templateId": "5690",
+    "instanceId": "536cfd7f6dacd395ba5622fd2c3de1b86913d8d41fed377e8bead1e0fd7c43eb"
+  },
+  "id": "VigcynWQySEjavtH",
+  "tags": []
+}

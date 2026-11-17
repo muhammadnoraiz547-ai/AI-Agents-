@@ -1,0 +1,2269 @@
+{
+  "name": "EstateAI Lead Intelligence System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "real-estate-lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a8604a34-6c27-430e-9492-81a5ef9d6992",
+      "name": "Lead Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -5424,
+        672
+      ],
+      "webhookId": "real-estate-lead-intake"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\n\nlet source = 'form';\nlet name = '';\nlet phone = '';\nlet email = '';\nlet transcript = '';\nlet isVapiToolCall = false;\nlet toolCalls = [];\nlet vapiCallId = null;\n\nif (body.message && body.message.type) {\n  const msg = body.message;\n  if (msg.type === 'tool-calls' || msg.type === 'function-call') {\n    isVapiToolCall = true;\n    source = 'vapi_tool';\n    toolCalls = msg.toolCallList || msg.toolCalls || [];\n    if (!Array.isArray(toolCalls) && msg.functionCall) {\n      toolCalls = [{ id: msg.functionCall.id || 'unknown', name: msg.functionCall.name, arguments: msg.functionCall.parameters || msg.functionCall.arguments || {} }];\n    }\n    vapiCallId = (msg.call && msg.call.id) || null;\n    name = (msg.customer && msg.customer.name) || '';\n    phone = (msg.customer && msg.customer.number) || '';\n  } else {\n    source = 'vapi';\n    transcript = msg.transcript || (msg.artifact && msg.artifact.transcript) || '';\n    name = (msg.customer && msg.customer.name) || (body.customer && body.customer.name) || '';\n    phone = (msg.customer && msg.customer.number) || (body.customer && body.customer.number) || '';\n    email = (msg.analysis && msg.analysis.structuredData && msg.analysis.structuredData.email) || '';\n  }\n} else if (Object.prototype.hasOwnProperty.call(body, 'chatId') || Object.prototype.hasOwnProperty.call(body, 'widgetId')) {\n  source = 'website_chat';\n  transcript = body.message || body.text || '';\n  name = body.name || '';\n  phone = body.phone || '';\n  email = body.email || '';\n} else {\n  source = 'form';\n  transcript = body.message || body.notes || body.details || '';\n  name = body.name || body.fullName || '';\n  phone = body.phone || body.phoneNumber || '';\n  email = body.email || '';\n}\n\nreturn [{\n  json: {\n    source,\n    isVapiToolCall,\n    toolCalls,\n    vapiCallId,\n    rawName: (name || '').toString().trim(),\n    rawPhone: (phone || '').toString().trim(),\n    rawEmail: (email || '').toString().trim().toLowerCase(),\n    rawTranscript: (transcript || '').toString().trim(),\n    receivedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "1ffdaec9-996d-42a0-9e44-4dd785ddd50d",
+      "name": "Normalize Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5168,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "vt1",
+              "leftValue": "={{ $json.isVapiToolCall }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "26c7c0b2-9d9f-4c8a-ab2f-2a6684c67dca",
+      "name": "Is Vapi Tool Call?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4928,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\nconst toolCalls = d.toolCalls || [];\nconst results = [];\n\nfunction makeResult(toolCallId, data) {\n  return {\n    toolCallId: toolCallId || 'unknown',\n    result: typeof data === 'string' ? data : JSON.stringify(data)\n  };\n}\n\nfor (const tc of toolCalls) {\n  const id = tc.id || (tc.toolCall && tc.toolCall.id) || 'unknown';\n  const name = (tc.name || (tc.function && tc.function.name) || '').toLowerCase();\n  let args = tc.arguments || (tc.function && tc.function.arguments) || {};\n  if (typeof args === 'string') {\n    try { args = JSON.parse(args); } catch(e) { args = {}; }\n  }\n\n  try {\n    if (name === 'qualify_lead') {\n      results.push(makeResult(id, {\n        status: 'ok',\n        message: 'Lead data received. Full qualification will run on end-of-call. Provide name, phone, intent, location, budget, timeline if available.',\n        received: { name: args.name || d.rawName, phone: args.phone || d.rawPhone, intent: args.intent || null }\n      }));\n    } else if (name === 'find_properties' || name === 'check_property') {\n      results.push(makeResult(id, {\n        status: 'ok',\n        action: name,\n        filters: {\n          location: args.location || null,\n          budget_min: args.budget_min || args.budgetMin || null,\n          budget_max: args.budget_max || args.budgetMax || args.budget || null,\n          property_type: args.property_type || args.propertyType || null,\n          bedrooms: args.bedrooms || null,\n          status: 'Active'\n        },\n        message: 'Property search will use Active listings matching location, budget range, type and bedrooms. Top matches with scores returned after full processing.'\n      }));\n    } else if (name === 'check_availability') {\n      const date = args.date || args.datetime || args.preferred_date || null;\n      const time = args.time || args.preferred_time || null;\n      if (!date && !time) {\n        results.push(makeResult(id, { status: 'need_input', message: 'Please provide a preferred date or date+time for availability check.' }));\n      } else {\n        results.push(makeResult(id, {\n          status: 'ok',\n          message: 'Availability will be checked against the agent calendar. Specific slot will be verified before any booking.',\n          requested: { date, time }\n        }));\n      }\n    } else if (name === 'book_viewing') {\n      const dt = args.datetime || args.date || args.preferred_datetime || null;\n      if (!dt) {\n        results.push(makeResult(id, { status: 'need_input', message: 'A specific date/time is required to book a viewing. Please confirm preferred slot.' }));\n      } else {\n        results.push(makeResult(id, {\n          status: 'ok',\n          message: 'Booking request received. Slot will be verified against live calendar and confirmed only if available.',\n          requested_datetime: dt\n        }));\n      }\n    } else if (name === 'create_lead' || name === 'update_lead') {\n      results.push(makeResult(id, {\n        status: 'ok',\n        action: name,\n        message: 'Lead create/update will be performed with phone as primary key and email as secondary. Existing records are updated, never duplicated.',\n        payload: {\n          name: args.name || d.rawName,\n          phone: args.phone || d.rawPhone,\n          email: args.email || d.rawEmail,\n          intent: args.intent || null\n        }\n      }));\n    } else {\n      results.push(makeResult(id, { status: 'unknown_action', message: `Action '${name}' is not supported. Supported: qualify_lead, find_properties, check_property, check_availability, book_viewing, create_lead, update_lead.` }));\n    }\n  } catch (err) {\n    results.push(makeResult(id, { status: 'error', message: 'Tool execution failed safely. Please try again or provide more details.' }));\n  }\n}\n\nif (results.length === 0) {\n  results.push({ toolCallId: 'unknown', result: JSON.stringify({ status: 'error', message: 'No valid tool calls found.' }) });\n}\n\nreturn [{ json: { vapiResponse: { results }, source: d.source, isVapiToolCall: true } }];"
+      },
+      "id": "254ee9ac-b35d-42e1-9892-5754d7633191",
+      "name": "Handle Vapi Tool Calls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4688,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.vapiResponse }}",
+        "options": {}
+      },
+      "id": "672e0fcb-5fa5-49e1-90e1-5fff39c0856f",
+      "name": "Respond Vapi Tools",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -4448,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4",
+          "mode": "list",
+          "cachedResultName": "CRM-real estate",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 731597008,
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit#gid=731597008"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property_Type",
+              "displayName": "Property_Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bedrooms",
+              "displayName": "Bedrooms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property_ID",
+              "displayName": "Property_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment_Requested",
+              "displayName": "Appointment_Requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment_Status",
+              "displayName": "Appointment_Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead_Score",
+              "displayName": "Lead_Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead_Category",
+              "displayName": "Lead_Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI_Summary",
+              "displayName": "AI_Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created_At",
+              "displayName": "Created_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last_Updated",
+              "displayName": "Last_Updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f9047470-48cb-494f-8f70-149abff581eb",
+      "name": "Search CRM by Contact",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -4688,
+        784
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IzZvNim7aPJ2eaQW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-dup-1",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "68014452-d4cf-4fe5-a0e8-75814f0be808",
+      "name": "Duplicate Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4432,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "isDuplicate",
+              "type": "boolean",
+              "value": "={{ true }}"
+            },
+            {
+              "id": "a2",
+              "name": "existingRowNumber",
+              "type": "number",
+              "value": "={{ $json.row_number }}"
+            },
+            {
+              "id": "a3",
+              "name": "rawName",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawName }}"
+            },
+            {
+              "id": "a4",
+              "name": "rawPhone",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawPhone }}"
+            },
+            {
+              "id": "a5",
+              "name": "rawEmail",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawEmail }}"
+            },
+            {
+              "id": "a6",
+              "name": "rawTranscript",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawTranscript }}"
+            },
+            {
+              "id": "a7",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.source }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "58015c4e-3392-4501-8cc2-600d837c9675",
+      "name": "Mark Existing Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4176,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "isDuplicate",
+              "type": "boolean",
+              "value": "={{ false }}"
+            },
+            {
+              "id": "b2",
+              "name": "existingRowNumber",
+              "type": "number",
+              "value": "={{ null }}"
+            },
+            {
+              "id": "b3",
+              "name": "rawName",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawName }}"
+            },
+            {
+              "id": "b4",
+              "name": "rawPhone",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawPhone }}"
+            },
+            {
+              "id": "b5",
+              "name": "rawEmail",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawEmail }}"
+            },
+            {
+              "id": "b6",
+              "name": "rawTranscript",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.rawTranscript }}"
+            },
+            {
+              "id": "b7",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $('Normalize Lead Data').item.json.source }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1db051c-efaa-460b-a07b-f8c25d8a868f",
+      "name": "Mark New Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4176,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\n\nconst systemPrompt = `You are a real estate lead qualification assistant. Read the conversation/notes and extract ONLY the following fields as strict JSON, with no extra text, no markdown fences. Use null for anything not mentioned - never invent data.\\n\\nSchema:\\n{\\n  \\\"name\\\": string|null,\\n  \\\"phone\\\": string|null,\\n  \\\"email\\\": string|null,\\n  \\\"intent\\\": \\\"buyer\\\"|\\\"seller\\\"|\\\"renter\\\"|\\\"unknown\\\",\\n  \\\"location\\\": string|null,\\n  \\\"budget\\\": string|null,\\n  \\\"budget_min\\\": number|null,\\n  \\\"budget_max\\\": number|null,\\n  \\\"property_type\\\": string|null,\\n  \\\"bedrooms\\\": number|null,\\n  \\\"timeline\\\": string|null,\\n  \\\"property_id\\\": string|null,\\n  \\\"appointment_requested\\\": boolean,\\n  \\\"appointment_datetime\\\": string|null,\\n  \\\"appointment_date_only\\\": string|null,\\n  \\\"notes\\\": string|null,\\n  \\\"ai_summary\\\": string|null\\n}`;\n\nconst userPrompt = `Lead source: ${d.source}\\nName provided on form: ${d.rawName}\\nPhone provided on form: ${d.rawPhone}\\nEmail provided on form: ${d.rawEmail}\\n\\nConversation / message content:\\n${d.rawTranscript}\\n\\nExtract the fields now as strict JSON only. Never invent missing information.`;\n\nreturn [{ json: { ...d, aiSystemPrompt: systemPrompt, aiUserPrompt: userPrompt, aiRetryCount: 0 } }];"
+      },
+      "id": "82153d94-7c09-4466-81c2-8afe67ef9b32",
+      "name": "Build AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3936,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"llama-3.3-70b-versatile\", temperature: 0.1, response_format: { type: \"json_object\" }, messages: [ { role: \"system\", content: $json.aiSystemPrompt }, { role: \"user\", content: $json.aiUserPrompt } ] } }}",
+        "options": {}
+      },
+      "id": "8194db50-e863-422f-9632-b004f234e6c0",
+      "name": "AI Lead Qualification (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3696,
+        784
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "9HbaB85it3tscVlw",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Build AI Prompt').item.json;\nlet aiText = '';\nlet parseError = null;\n\ntry {\n  aiText = $json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content;\n} catch (e) {\n  aiText = '';\n  parseError = 'No content from AI';\n}\nif (!aiText) aiText = '{}';\n\nlet parsed = {};\nlet isValid = false;\ntry {\n  const cleaned = aiText.toString().replace(/```json|```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n  if (typeof parsed === 'object' && parsed !== null) {\n    isValid = true;\n  }\n} catch (e) {\n  parseError = e.message;\n  parsed = {};\n}\n\nif (!isValid && (base.aiRetryCount || 0) < 1) {\n  return [{\n    json: {\n      ...base,\n      aiRetryCount: 1,\n      needsAiRetry: true,\n      aiParseError: parseError || 'Invalid JSON'\n    }\n  }];\n}\n\nconst intent = (parsed.intent || 'unknown').toString().toLowerCase();\nconst safeIntent = ['buyer','seller','renter'].includes(intent) ? intent : 'unknown';\n\nconst result = {\n  isDuplicate: base.isDuplicate,\n  existingRowNumber: base.existingRowNumber,\n  source: base.source,\n  receivedAt: new Date().toISOString(),\n  name: parsed.name || base.rawName || 'Unknown',\n  phone: parsed.phone || base.rawPhone || '',\n  email: (parsed.email || base.rawEmail || '').toLowerCase(),\n  intent: safeIntent,\n  location: parsed.location || null,\n  budget: parsed.budget || null,\n  budget_min: parsed.budget_min || null,\n  budget_max: parsed.budget_max || null,\n  property_type: parsed.property_type || null,\n  bedrooms: parsed.bedrooms != null ? Number(parsed.bedrooms) : null,\n  timeline: parsed.timeline || null,\n  property_id: parsed.property_id || null,\n  appointment_requested: parsed.appointment_requested === true,\n  appointment_datetime: parsed.appointment_datetime || null,\n  appointment_date_only: parsed.appointment_date_only || null,\n  notes: parsed.notes || null,\n  ai_summary: parsed.ai_summary || (base.rawTranscript ? base.rawTranscript.substring(0, 300) : null),\n  aiParseError: parseError || null,\n  aiValid: isValid\n};\n\nreturn [{ json: result }];"
+      },
+      "id": "490c93fa-c824-41cb-8f6f-8e3ec221b64d",
+      "name": "Parse AI Qualification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3456,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "ar1",
+              "leftValue": "={{ $json.needsAiRetry }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3821ca53-c5af-4834-8b69-9ca1c2c0413a",
+      "name": "AI Needs Retry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3216,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"llama-3.3-70b-versatile\", temperature: 0.05, response_format: { type: \"json_object\" }, messages: [ { role: \"system\", content: $json.aiSystemPrompt + \"\\nIMPORTANT: Respond with valid JSON only.\" }, { role: \"user\", content: $json.aiUserPrompt } ] } }}",
+        "options": {}
+      },
+      "id": "388a1cd4-4aef-4487-940b-ca347f41ccf1",
+      "name": "AI Retry Qualification (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2976,
+        624
+      ],
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "9HbaB85it3tscVlw",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Build AI Prompt').item.json;\nlet aiText = '';\nlet parseError = null;\ntry {\n  aiText = $json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content;\n} catch (e) { aiText = ''; parseError = 'Retry failed'; }\nif (!aiText) aiText = '{}';\n\nlet parsed = {};\ntry {\n  const cleaned = aiText.toString().replace(/```json|```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parseError = e.message;\n  parsed = {};\n}\n\nconst intent = (parsed.intent || 'unknown').toString().toLowerCase();\nconst safeIntent = ['buyer','seller','renter'].includes(intent) ? intent : 'unknown';\n\nreturn [{\n  json: {\n    isDuplicate: base.isDuplicate,\n    existingRowNumber: base.existingRowNumber,\n    source: base.source,\n    receivedAt: new Date().toISOString(),\n    name: parsed.name || base.rawName || 'Unknown',\n    phone: parsed.phone || base.rawPhone || '',\n    email: (parsed.email || base.rawEmail || '').toLowerCase(),\n    intent: safeIntent,\n    location: parsed.location || null,\n    budget: parsed.budget || null,\n    budget_min: parsed.budget_min || null,\n    budget_max: parsed.budget_max || null,\n    property_type: parsed.property_type || null,\n    bedrooms: parsed.bedrooms != null ? Number(parsed.bedrooms) : null,\n    timeline: parsed.timeline || null,\n    property_id: parsed.property_id || null,\n    appointment_requested: parsed.appointment_requested === true,\n    appointment_datetime: parsed.appointment_datetime || null,\n    appointment_date_only: parsed.appointment_date_only || null,\n    notes: parsed.notes || null,\n    ai_summary: parsed.ai_summary || (base.rawTranscript ? base.rawTranscript.substring(0, 300) : null),\n    aiParseError: parseError || null,\n    aiValid: !parseError,\n    aiRetried: true\n  }\n}];"
+      },
+      "id": "44ecba5e-604e-4ac2-9b95-29bf6066981b",
+      "name": "Parse AI Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2736,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "r1",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "buyer",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "seller",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "r3",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "renter",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "746f20e4-ee92-4811-8adf-3d36c77754fa",
+      "name": "Intent Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2496,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t1",
+              "name": "intentLabel",
+              "type": "string",
+              "value": "Buyer"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8c11fc8e-021b-4cf0-aa33-62d08692ffef",
+      "name": "Tag Buyer Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t2",
+              "name": "intentLabel",
+              "type": "string",
+              "value": "Seller"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5c575075-1323-4058-8e01-460bb8ca3ec0",
+      "name": "Tag Seller Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t3",
+              "name": "intentLabel",
+              "type": "string",
+              "value": "Renter"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "d466e650-d0a5-4878-9387-7ad3ec662f31",
+      "name": "Tag Renter Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t4",
+              "name": "intentLabel",
+              "type": "string",
+              "value": "Unknown"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "61c7ce71-321c-4de7-8be3-10b2e2a57174",
+      "name": "Tag Unknown Intent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\nlet score = 0;\n\nif (d.phone) score += 15;\nif (d.email) score += 10;\n\nconst timeline = (d.timeline || '').toString().toLowerCase();\nif (/asap|immediate|this week|0-30|30 day/.test(timeline)) score += 25;\nelse if (/1-3 month|next month/.test(timeline)) score += 15;\nelse if (/3-6 month/.test(timeline)) score += 8;\nelse if (timeline) score += 3;\n\nif (d.budget || d.budget_max) score += 15;\nif (d.property_type) score += 8;\nif (d.bedrooms) score += 5;\nif (d.location) score += 7;\nif (d.appointment_requested === true) score += 15;\n\nscore = Math.max(0, Math.min(100, score));\n\nlet leadCategory = 'COLD';\nif (score >= 80) leadCategory = 'HOT';\nelse if (score >= 50) leadCategory = 'WARM';\n\nreturn [{ json: { ...d, leadScore: score, leadCategory } }];"
+      },
+      "id": "74138b07-1db0-4989-8713-b809364609a3",
+      "name": "Lead Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "pm1",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "seller",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "06da6c34-cfd5-48d7-8bce-29986a479abe",
+      "name": "Needs Property Match?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1712,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4",
+          "mode": "list",
+          "cachedResultName": "CRM-real estate",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1654167820,
+          "mode": "list",
+          "cachedResultName": "Properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit#gid=1654167820"
+        },
+        "options": {}
+      },
+      "id": "a60ba996-7167-4d17-b733-b8fad5875879",
+      "name": "Search Matching Properties",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1456,
+        624
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IzZvNim7aPJ2eaQW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allProps = $input.all().map(i => i.json).filter(p => p && (p.Status || p.status || '').toString().toLowerCase() === 'active');\nconst lead = $('Lead Scoring').item.json;\n\nfunction parseNum(v) {\n  if (v == null || v === '') return null;\n  const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));\n  return isNaN(n) ? null : n;\n}\n\nconst loc = (lead.location || '').toString().toLowerCase().trim();\nconst pType = (lead.property_type || '').toString().toLowerCase().trim();\nconst bedsWanted = lead.bedrooms != null ? Number(lead.bedrooms) : null;\nlet budgetMin = parseNum(lead.budget_min);\nlet budgetMax = parseNum(lead.budget_max) || parseNum(lead.budget);\n\nconst scored = [];\n\nfor (const p of allProps) {\n  let score = 0;\n  const pLoc = (p.Location || p.location || '').toString().toLowerCase();\n  const pTypeVal = (p.Property_Type || p.property_type || p.Type || '').toString().toLowerCase();\n  const pBeds = parseNum(p.Bedrooms || p.bedrooms);\n  const pPrice = parseNum(p.Price || p.price);\n\n  if (loc && pLoc) {\n    if (pLoc.includes(loc) || loc.includes(pLoc)) score += 40;\n    else if (pLoc.split(/[\\s,]+/).some(w => loc.includes(w) || w.includes(loc))) score += 20;\n  }\n\n  if (pType && pTypeVal) {\n    if (pTypeVal === pType || pTypeVal.includes(pType) || pType.includes(pTypeVal)) score += 25;\n  }\n\n  if (bedsWanted != null && pBeds != null) {\n    if (pBeds === bedsWanted) score += 20;\n    else if (Math.abs(pBeds - bedsWanted) === 1) score += 10;\n  }\n\n  if (pPrice != null) {\n    if (budgetMax != null && pPrice <= budgetMax * 1.1) score += 15;\n    if (budgetMin != null && pPrice >= budgetMin * 0.9) score += 10;\n    if (budgetMax == null && budgetMin == null) score += 5;\n  }\n\n  if (score > 0) {\n    scored.push({\n      ...p,\n      matchScore: Math.min(100, score),\n      propertyId: p.Property_ID || p.property_id || p.id || null\n    });\n  }\n}\n\nscored.sort((a, b) => b.matchScore - a.matchScore);\nconst top = scored.slice(0, 5);\n\nreturn [{\n  json: {\n    ...lead,\n    matchedProperties: top,\n    matchCount: top.length,\n    propertyMatchError: top.length === 0 ? 'No active properties matched the criteria' : null\n  }\n}];"
+      },
+      "id": "637731ce-e438-43de-9ddf-e0e7a4a86946",
+      "name": "Filter Properties by Budget",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "matchedProperties",
+              "type": "array",
+              "value": "={{ [] }}"
+            },
+            {
+              "id": "s2",
+              "name": "matchCount",
+              "type": "number",
+              "value": "={{ 0 }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ae1f8759-5bd6-4315-851d-3e97d3d588ef",
+      "name": "Skip Property Matching",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1456,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "ap1",
+              "leftValue": "={{ $json.appointment_requested }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "45ca131f-17d6-4f39-a6ae-6f877682c9ce",
+      "name": "Appointment Requested?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -928,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "muhammadnoraiz547@gmail.com",
+          "mode": "list",
+          "cachedResultName": "muhammadnoraiz547@gmail.com"
+        },
+        "timeMin": "={{ $json.appointment_datetime ? $json.appointment_datetime : ($json.appointment_date_only ? $json.appointment_date_only + 'T00:00:00Z' : $now.toISO()) }}",
+        "timeMax": "={{ $json.appointment_datetime ? new Date(new Date($json.appointment_datetime).getTime() + 86400000).toISOString() : ($json.appointment_date_only ? $json.appointment_date_only + 'T23:59:59Z' : $now.plus({ days: 7 }).toISO()) }}",
+        "options": {}
+      },
+      "id": "9b169207-4314-4fb1-99a7-a6c28f70e33d",
+      "name": "Check Calendar Availability",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -672,
+        624
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "wU39L3lrWrBaZdK3",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const events = $input.all().map(i => i.json);\nconst lead = $('Filter Properties by Budget').item.json || $('Skip Property Matching').item.json;\n\nconst hasSpecificDt = lead.appointment_datetime && !isNaN(new Date(lead.appointment_datetime).getTime());\nconst hasDateOnly = lead.appointment_date_only && !hasSpecificDt;\n\nlet slotAvailable = false;\nlet requestedStartTime = null;\nlet requestedEndTime = null;\nlet availableSlots = [];\nlet appointmentStatus = 'not_requested';\nlet calendarNote = '';\n\nif (hasSpecificDt) {\n  const requestedStart = new Date(lead.appointment_datetime);\n  const requestedEnd = new Date(requestedStart.getTime() + 30 * 60000);\n  requestedStartTime = requestedStart.toISOString();\n  requestedEndTime = requestedEnd.toISOString();\n\n  const conflict = events.some(e => {\n    const evStartRaw = (e.start && (e.start.dateTime || e.start.date)) || e.start;\n    const evEndRaw = (e.end && (e.end.dateTime || e.end.date)) || e.end;\n    if (!evStartRaw || !evEndRaw) return false;\n    const evStart = new Date(evStartRaw);\n    const evEnd = new Date(evEndRaw);\n    return requestedStart < evEnd && requestedEnd > evStart;\n  });\n\n  slotAvailable = !conflict;\n  appointmentStatus = slotAvailable ? 'slot_available_ready_to_book' : 'requested_slot_unavailable';\n  calendarNote = slotAvailable ? 'Requested slot is free' : 'Requested slot conflicts with existing event';\n} else if (hasDateOnly) {\n  const dayStart = new Date(lead.appointment_date_only + 'T09:00:00');\n  const dayEnd = new Date(lead.appointment_date_only + 'T17:00:00');\n  const busy = events.filter(e => {\n    const s = new Date((e.start && (e.start.dateTime || e.start.date)) || e.start);\n    const en = new Date((e.end && (e.end.dateTime || e.end.date)) || e.end);\n    return s < dayEnd && en > dayStart;\n  });\n  const windows = [\n    { start: '09:00', end: '12:00' },\n    { start: '13:00', end: '17:00' }\n  ];\n  for (const w of windows) {\n    const ws = new Date(lead.appointment_date_only + 'T' + w.start + ':00');\n    const we = new Date(lead.appointment_date_only + 'T' + w.end + ':00');\n    const blocked = busy.some(e => {\n      const s = new Date((e.start && (e.start.dateTime || e.start.date)) || e.start);\n      const en = new Date((e.end && (e.end.dateTime || e.end.date)) || e.end);\n      return ws < en && we > s;\n    });\n    if (!blocked) availableSlots.push({ date: lead.appointment_date_only, window: w.start + '-' + w.end });\n  }\n  appointmentStatus = availableSlots.length > 0 ? 'date_available_options' : 'date_fully_booked';\n  calendarNote = availableSlots.length > 0 ? 'Available windows on requested date' : 'No free windows on requested date';\n} else {\n  appointmentStatus = 'need_preferred_datetime';\n  calendarNote = 'Customer did not provide a preferred date or time. Ask for preferred viewing slot.';\n}\n\nreturn [{\n  json: {\n    ...lead,\n    slotAvailable,\n    requestedStartTime,\n    requestedEndTime,\n    availableSlots,\n    appointmentStatus,\n    calendarNote\n  }\n}];"
+      },
+      "id": "9dda5d96-aec7-42c8-a1cc-2a8f658e22b1",
+      "name": "Evaluate Availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "sa1",
+              "leftValue": "={{ $json.slotAvailable }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fa2b1ed3-a95c-48f6-a3c9-52f442cf3f6f",
+      "name": "Slot Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -144,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "muhammadnoraiz547@gmail.com",
+          "mode": "list",
+          "cachedResultName": "muhammadnoraiz547@gmail.com"
+        },
+        "start": "={{ $json.requestedStartTime }}",
+        "end": "={{ $json.requestedEndTime }}",
+        "additionalFields": {
+          "description": "=Lead phone: {{ $json.phone }} | Email: {{ $json.email }} | Property: {{ $json.property_id || ( $json.matchedProperties && $json.matchedProperties[0] && $json.matchedProperties[0].propertyId ) || 'TBD' }} | Notes: {{ $json.notes || 'n/a' }}",
+          "summary": "=Property Viewing - {{ $json.name }}"
+        }
+      },
+      "id": "714458b1-0493-43e1-b67d-a1e8f0b88e50",
+      "name": "Book Appointment",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        112,
+        512
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "wU39L3lrWrBaZdK3",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac1",
+              "name": "appointmentStatus",
+              "type": "string",
+              "value": "confirmed"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "87b5395c-01fe-47cd-9e2f-1f0718f98692",
+      "name": "Appointment Confirmed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "au1",
+              "name": "appointmentStatus",
+              "type": "string",
+              "value": "={{ $json.appointmentStatus || 'requested_slot_unavailable_needs_manual_scheduling' }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "bf28d125-cb57-4aef-96bd-a09feec24972",
+      "name": "Appointment Unavailable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "na1",
+              "name": "appointmentStatus",
+              "type": "string",
+              "value": "not_requested"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "7908dfd7-13cb-4905-bf0c-4ca02616e2a2",
+      "name": "No Appointment Requested",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -672,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "ec1",
+              "leftValue": "={{ $json.isDuplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d01d218-d795-49d6-90b1-a3ca8ecd8052",
+      "name": "Existing CRM Row?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4",
+          "mode": "list",
+          "cachedResultName": "CRM-real estate",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 731597008,
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit#gid=731597008"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.existingRowNumber }}",
+            "Name": "={{ $json.name }}",
+            "Phone": "={{ $json.phone }}",
+            "Email": "={{ $json.email }}",
+            "Intent": "={{ $json.intent }}",
+            "Location": "={{ $json.location }}",
+            "Budget": "={{ $json.budget || ($json.budget_min && $json.budget_max ? $json.budget_min + '-' + $json.budget_max : null) }}",
+            "Property_Type": "={{ $json.property_type }}",
+            "Bedrooms": "={{ $json.bedrooms }}",
+            "Timeline": "={{ $json.timeline }}",
+            "Property_ID": "={{ $json.property_id || ($json.matchedProperties && $json.matchedProperties[0] && $json.matchedProperties[0].propertyId) || '' }}",
+            "Appointment_Requested": "={{ $json.appointment_requested }}",
+            "Appointment_Status": "={{ $json.appointmentStatus }}",
+            "Lead_Score": "={{ $json.leadScore }}",
+            "Lead_Category": "={{ $json.leadCategory }}",
+            "Source": "={{ $json.source }}",
+            "AI_Summary": "={{ $json.ai_summary }}",
+            "Last_Updated": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property_Type",
+              "displayName": "Property_Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bedrooms",
+              "displayName": "Bedrooms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property_ID",
+              "displayName": "Property_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment_Requested",
+              "displayName": "Appointment_Requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment_Status",
+              "displayName": "Appointment_Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead_Score",
+              "displayName": "Lead_Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead_Category",
+              "displayName": "Lead_Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI_Summary",
+              "displayName": "AI_Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created_At",
+              "displayName": "Created_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Last_Updated",
+              "displayName": "Last_Updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "66b9d2e8-1efa-4377-a164-a21501d7ca13",
+      "name": "Update CRM Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        624
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IzZvNim7aPJ2eaQW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4",
+          "mode": "list",
+          "cachedResultName": "CRM-real estate",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 731597008,
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PV4vy6pUWFiuudmM6vuz6TWxUlnc04zglhP7GXx1Be4/edit#gid=731597008"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "Phone": "={{ $json.phone }}",
+            "Email": "={{ $json.email }}",
+            "Intent": "={{ $json.intent }}",
+            "Location": "={{ $json.location }}",
+            "Budget": "={{ $json.budget || ($json.budget_min && $json.budget_max ? $json.budget_min + '-' + $json.budget_max : null) }}",
+            "Property_Type": "={{ $json.property_type }}",
+            "Bedrooms": "={{ $json.bedrooms }}",
+            "Timeline": "={{ $json.timeline }}",
+            "Property_ID": "={{ $json.property_id || ($json.matchedProperties && $json.matchedProperties[0] && $json.matchedProperties[0].propertyId) || '' }}",
+            "Appointment_Requested": "={{ $json.appointment_requested }}",
+            "Appointment_Status": "={{ $json.appointmentStatus }}",
+            "Lead_Score": "={{ $json.leadScore }}",
+            "Lead_Category": "={{ $json.leadCategory }}",
+            "Source": "={{ $json.source }}",
+            "AI_Summary": "={{ $json.ai_summary }}",
+            "Created_At": "={{ $now.toISO() }}",
+            "Last_Updated": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property_Type",
+              "displayName": "Property_Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bedrooms",
+              "displayName": "Bedrooms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property_ID",
+              "displayName": "Property_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment_Requested",
+              "displayName": "Appointment_Requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment_Status",
+              "displayName": "Appointment_Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead_Score",
+              "displayName": "Lead_Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead_Category",
+              "displayName": "Lead_Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI_Summary",
+              "displayName": "AI_Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created_At",
+              "displayName": "Created_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last_Updated",
+              "displayName": "Last_Updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "68f868f5-4d2e-4fb1-a388-dd000401a60f",
+      "name": "Create CRM Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        944
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IzZvNim7aPJ2eaQW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "hl1",
+              "leftValue": "={{ $json.leadCategory }}",
+              "rightValue": "HOT",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41834407-a60d-48e2-a795-19313b6b0e17",
+      "name": "HOT Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=🔥 HOT Lead: {{ $json.name }} (Score {{ $json.leadScore }}) - {{ $json.intent }}",
+        "message": "=A high-priority lead just came in and needs immediate follow-up.\\n\\nName: {{ $json.name }}\\nPhone: {{ $json.phone }}\\nIntent: {{ $json.intent }}\\nLocation: {{ $json.location }}\\nBudget: {{ $json.budget || ($json.budget_min && $json.budget_max ? $json.budget_min + '-' + $json.budget_max : 'n/a') }}\\nProperty: {{ $json.property_id || ($json.matchedProperties && $json.matchedProperties[0] && ($json.matchedProperties[0].propertyId || $json.matchedProperties[0].Location)) || 'n/a' }}\\nTimeline: {{ $json.timeline }}\\nLead Score: {{ $json.leadScore }} ({{ $json.leadCategory }})\\nAI Summary: {{ $json.ai_summary || 'n/a' }}\\nAppointment status: {{ $json.appointmentStatus }}\\n\\nSource: {{ $json.source }}",
+        "options": {}
+      },
+      "id": "36beb3dd-11fb-4c2f-ba02-7bfd0f2f943c",
+      "name": "Notify Agent - HOT Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1424,
+        624
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "webhookId": "a4bae7db-7bd7-4fc9-81c3-40c673fd52f2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "dmNQIcm38D6JAcyi",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "bffff81b-307e-43a4-9f4b-25cc209c43f0",
+      "name": "No Immediate Notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"success\", \"name\": $json.name, \"intent\": $json.intent, \"leadScore\": $json.leadScore, \"leadCategory\": $json.leadCategory, \"appointmentStatus\": $json.appointmentStatus, \"matchCount\": $json.matchCount || 0, \"matchedProperties\": $json.matchedProperties || [], \"aiValid\": $json.aiValid !== false } }}",
+        "options": {}
+      },
+      "id": "889fe7e9-e2d2-47ee-8700-4f9e2b1d39c8",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        784
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "56fa3293-9b60-4547-a5e5-0f2fc5af1159",
+      "name": "Workflow Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -5424,
+        1264
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=⚠️ Real Estate Lead Workflow Failed: {{ $json.workflow.name }}",
+        "message": "=The Real Estate Lead Conversion workflow failed.\\n\\nNode: {{ $json.execution.lastNodeExecuted }}\\nError: {{ $json.execution.error?.message }}\\nExecution URL: {{ $json.execution.url }}\\n\\nPlease check the failed lead manually so it is not lost.\\n\\nCommon causes: AI failure, Google Sheets failure, Calendar failure, invalid input, property not found, duplicate handling.",
+        "options": {}
+      },
+      "id": "dada135c-69dc-4b16-ba01-53d93d0aa2fe",
+      "name": "Notify Admin - Workflow Error",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -5168,
+        1264
+      ],
+      "webhookId": "4a6aa581-acd2-438f-966f-7739a9da92cf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "dmNQIcm38D6JAcyi",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Lead Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Is Vapi Tool Call?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Vapi Tool Call?": {
+      "main": [
+        [
+          {
+            "node": "Handle Vapi Tool Calls",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search CRM by Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Vapi Tool Calls": {
+      "main": [
+        [
+          {
+            "node": "Respond Vapi Tools",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search CRM by Contact": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Found?": {
+      "main": [
+        [
+          {
+            "node": "Mark Existing Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Existing Lead": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark New Lead": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Lead Qualification (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Lead Qualification (Groq)": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Qualification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Qualification": {
+      "main": [
+        [
+          {
+            "node": "AI Needs Retry?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Needs Retry?": {
+      "main": [
+        [
+          {
+            "node": "AI Retry Qualification (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Retry Qualification (Groq)": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Retry": {
+      "main": [
+        [
+          {
+            "node": "Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Router": {
+      "main": [
+        [
+          {
+            "node": "Tag Buyer Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Seller Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Renter Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Unknown Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Buyer Lead": {
+      "main": [
+        [
+          {
+            "node": "Lead Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Seller Lead": {
+      "main": [
+        [
+          {
+            "node": "Lead Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Renter Lead": {
+      "main": [
+        [
+          {
+            "node": "Lead Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Unknown Intent": {
+      "main": [
+        [
+          {
+            "node": "Lead Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Scoring": {
+      "main": [
+        [
+          {
+            "node": "Needs Property Match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Property Match?": {
+      "main": [
+        [
+          {
+            "node": "Search Matching Properties",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Property Matching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Matching Properties": {
+      "main": [
+        [
+          {
+            "node": "Filter Properties by Budget",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Properties by Budget": {
+      "main": [
+        [
+          {
+            "node": "Appointment Requested?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Property Matching": {
+      "main": [
+        [
+          {
+            "node": "Appointment Requested?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appointment Requested?": {
+      "main": [
+        [
+          {
+            "node": "Check Calendar Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Appointment Requested",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Calendar Availability": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Availability": {
+      "main": [
+        [
+          {
+            "node": "Slot Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slot Available?": {
+      "main": [
+        [
+          {
+            "node": "Book Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Appointment Unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book Appointment": {
+      "main": [
+        [
+          {
+            "node": "Appointment Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appointment Confirmed": {
+      "main": [
+        [
+          {
+            "node": "Existing CRM Row?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appointment Unavailable": {
+      "main": [
+        [
+          {
+            "node": "Existing CRM Row?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Appointment Requested": {
+      "main": [
+        [
+          {
+            "node": "Existing CRM Row?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existing CRM Row?": {
+      "main": [
+        [
+          {
+            "node": "Update CRM Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create CRM Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CRM Row": {
+      "main": [
+        [
+          {
+            "node": "HOT Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CRM Row": {
+      "main": [
+        [
+          {
+            "node": "HOT Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HOT Lead?": {
+      "main": [
+        [
+          {
+            "node": "Notify Agent - HOT Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Immediate Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Agent - HOT Lead": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Immediate Notification": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin - Workflow Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "efcc989b-af04-4ef1-b149-3f40f07af202",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5b8b38d1fec923120a8faadc4a5be54d063e6a4ab53c48cf142ee97faad50772"
+  },
+  "nodeGroups": [],
+  "id": "XW9tEd9M9D5YvMWb",
+  "tags": []
+}

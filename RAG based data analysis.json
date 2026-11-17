@@ -1,0 +1,163 @@
+{
+  "name": "RAG based data analysis",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        -64
+      ],
+      "id": "fab2b56c-cda0-48c0-9144-e8b52c1b053d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1bPTRm10_o7mNhzERfjHoVsvbZmwPneIw",
+          "mode": "list",
+          "cachedResultName": "FY23_Q4_Consolidated_Financial_Statements.pdf",
+          "cachedResultUrl": "https://drive.google.com/file/d/1bPTRm10_o7mNhzERfjHoVsvbZmwPneIw/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -176,
+        -64
+      ],
+      "id": "1afec7c5-c701-43a7-95d9-8a6bf41168bc",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IsmvL9Q2yn5PSgGq",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "ai-agent-new",
+          "mode": "list",
+          "cachedResultName": "ai-agent-new"
+        },
+        "options": {
+          "pineconeNamespace": "apple-data"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        -64
+      ],
+      "id": "99755ddd-6566-4caf-89b6-000cd9608d15",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "Evm7QnOQWYoPJ3Qx",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -48,
+        128
+      ],
+      "id": "f55cd12f-a1ae-445d-8fcd-46bca8fc8076",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "yjq7C8JeQt7mmrBS",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        144
+      ],
+      "id": "40b2ecd8-4519-4584-8671-bd16889734d5",
+      "name": "Default Data Loader"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "ee24d50b-b254-4175-b06d-750c3734d9c7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a3317da8a4a44dd9aee1acf069470ada45fe0882d5cef27cdc7ccda458f63b7f"
+  },
+  "id": "GG99uZ1QZPudrKkucgX-9",
+  "tags": []
+}

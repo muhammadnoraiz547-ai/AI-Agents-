@@ -1,0 +1,271 @@
+{
+  "name": "Dental Response AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1JezEwxUhtZFRbplUr2tNj4nROR8eopojfUPWjGzui2U",
+          "mode": "list",
+          "cachedResultName": "Dentist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JezEwxUhtZFRbplUr2tNj4nROR8eopojfUPWjGzui2U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JezEwxUhtZFRbplUr2tNj4nROR8eopojfUPWjGzui2U/edit#gid=0"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "b00450c4-4bf7-4d87-a2c4-dbdf3afc5638",
+      "name": "Google Sheets Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "position": [
+        1216,
+        544
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "KGP7LlSISY2shLMn",
+          "name": "Google Sheets Trigger OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "873655e8-0f44-4583-9314-42b8493c41e0",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1248,
+        832
+      ],
+      "webhookId": "30f51dc4-6154-4fa0-93df-7c543ff814cc",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Patient Details:\n- Full Name: {{ $json[\"Full Name\"] }}\n- Email: {{ $json.Email }}\n- Phone: {{ $json.Phone }}\n- Treatment Interest: {{ $json['Treatment Interest'] }}\n- Dental Concern: {{ $json['Dental Concern'] }}\n- Contact Method: {{ $json['Contact Method'] }}\n- Contact Time:{{ $json['Best Time'] }}\n- Additional Message: {{ $json['Additional Message'] }}",
+        "options": {
+          "systemMessage": "=You are a friendly and professional dental clinic assistant for SmileBright Dental. \n\nYour task is to write a short, warm, and engaging welcome message (plain text) based on the patient's form inputs. \n\nTailor the message to their treatment choice and dental concern. \nUse their name, mention their interest positively, and encourage them to book an appointment. \nInclude their preferred contact method and best time.\n\n⚠️ Important Rules:\n- Return ONLY plain text (no HTML, no <title>, no <p>, no <a> tags)\n- Start with a warm greeting using their name\n- Keep it short, friendly and professional (4-6 lines)\n- End with a clear call to action"
+        }
+      },
+      "id": "4c2bd99e-ed16-4e45-b35f-faa07191f274",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1504,
+        704
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "800070a1-e597-4e9e-a648-76c2e7360e0d",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1504,
+        496
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "d4667734-2bd0-4a0d-a35f-cf286ea976d0",
+      "name": "Think",
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "position": [
+        1648,
+        944
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Google Sheets Trigger').item.json[\"Email\"] }}"
+      },
+      "id": "697650aa-7639-49ba-a49a-c1bd04186d46",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        1648,
+        496
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Google Sheets Trigger').item.json.Email }}",
+        "subject": "=Welcome to SmileBright Dental",
+        "emailType": "text",
+        "message": "={{ $('AI Agent').item.json.output }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ac13787d-2893-4572-bcb9-d6632008d4e4",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1920,
+        480
+      ],
+      "webhookId": "03cbe0e0-d50c-4efd-9537-0866d747c9f7",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=New Lead  {{ $('Google Sheets Trigger').item.json['Full Name'] }}",
+        "emailType": "text",
+        "message": "=A new patient lead has arrived 🎉\n\nName: {{ $('Google Sheets Trigger').item.json['Full Name'] }}\nEmail: {{ $('Google Sheets Trigger').item.json['Email'] }}\nPhone: {{ $('Google Sheets Trigger').item.json['Phone'] }}\nTreatment Interest: {{ $('Google Sheets Trigger').item.json['Treatment Interest'] }}\nDental Concern: {{ $('Google Sheets Trigger').item.json['Dental Concern'] }}\n\nPlease follow up with them on {{ $('Google Sheets Trigger').item.json['Contact Method'] }} in the {{ $('Google Sheets Trigger').item.json['Best Time'] }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b79c7074-b933-495f-9475-6192f40c6284",
+      "name": "Send a message1",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1952,
+        736
+      ],
+      "webhookId": "109a4b14-f43d-4da1-9a1b-b3d57cdcd30d",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3eba3317-4ed8-44d8-b31c-82a0c5ff3d4f",
+  "meta": {
+    "templateId": "7971",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "536cfd7f6dacd395ba5622fd2c3de1b86913d8d41fed377e8bead1e0fd7c43eb"
+  },
+  "id": "hBSKHwzunKqTyv4R",
+  "tags": []
+}

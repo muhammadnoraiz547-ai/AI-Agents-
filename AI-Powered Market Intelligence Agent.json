@@ -1,0 +1,695 @@
+{
+  "name": "AI-Powered Market Intelligence Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "03778b5d-2d63-46e6-beb3-b3f83ceeabcb",
+              "name": "Indices",
+              "type": "string",
+              "value": "SPY,QQQ,DIA"
+            },
+            {
+              "id": "57bed606-a6d6-495b-8119-8afcb9da4704",
+              "name": "Forex",
+              "type": "string",
+              "value": "EUR/USD,USD/INR,GBP/USD,USD/JPY"
+            },
+            {
+              "id": "1de3c6c9-121b-4e5e-b05c-136d0b33079f",
+              "name": "Commodities",
+              "type": "string",
+              "value": "XAU/USD,USO"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "108301be-fe1b-4b1a-b273-00213e3dc28d",
+      "name": "Set Market Assets",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1232,
+        592
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Here is today's normalized multi-asset market data:\n\n{{ JSON.stringify($json.market_data, null, 2) }}\n\nAnalyze the data and generate a professional daily market report.\n\nImportant:\nFollow the exact output format specified in the system instructions.\nUse the provided percentage moves and trend data to determine sentiment and outlook.",
+        "options": {
+          "systemMessage": "You are a professional multi-asset financial market strategist and macro analyst.\n\nYour task is to analyze normalized market data across equities, forex and commodities and generate a concise institutional-grade daily market snapshot.\n\nSTRICT RULES:\n- Output plain text only\n- No markdown\n- No JSON\n- No emojis\n- No bold text\n- No bullet symbols except hyphen (-) under Key Movers\n- Use the EXACT section headings below\n- Keep each section concise and professional\n- Mention actual percentage changes from provided data\n- Focus on trend, sentiment and actionable market insight\n- Avoid generic filler statements\n\nMANDATORY OUTPUT FORMAT:\n\nMarket Summary:\n2-3 lines summarizing the overall market direction and major trends.\n\nKey Movers:\n- Always include SPY\n- Always include XAU/USD\n- Always include USO\n- Add 2 to 3 other biggest movers\n\nRisk Sentiment:\nState one of:\nRisk-on\nRisk-off\nMixed\n\nActionable Insight:\n1-2 lines about what traders/investors should watch next.\n\nOutlook:\n1-2 lines on expected next-session bias."
+        }
+      },
+      "id": "ecbce792-bd83-43b1-89d2-33dcc4e3f0cf",
+      "name": "AI Market Insights",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        2272,
+        112
+      ],
+      "typeVersion": 3.1
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "id": "63ed006d-39e2-4e6c-8e77-cb9fbe38b0e4",
+      "name": "Insights",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "position": [
+        2272,
+        288
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "groqApi": {
+          "id": "OwNFiXfcD0Cjhuac",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $json.output || \"\";\n\n// Clean raw text\ntext = text.replace(/\\\\n/g, '\\n').trim();\n\n// Extract sections safely\nconst summaryMatch = text.match(/Market Summary\\s*:\\s*([\\s\\S]*?)(?=Key Movers\\s*:|$)/i);\nconst moversMatch = text.match(/Key Movers\\s*:\\s*([\\s\\S]*?)(?=Risk Sentiment\\s*:|Actionable Insight\\s*:|$)/i);\nconst sentimentMatch = text.match(/Risk Sentiment\\s*:\\s*([\\s\\S]*?)(?=Actionable Insight\\s*:|$)/i);\nconst insightMatch = text.match(/Actionable Insight\\s*:\\s*([\\s\\S]*?)(?=Outlook\\s*:|$)/i);\nconst outlookMatch = text.match(/Outlook\\s*:\\s*([\\s\\S]*)/i);\n\n// Assign values\nlet summary = summaryMatch?.[1] || \"\";\nlet moversRaw = moversMatch?.[1] || \"\";\nlet sentiment = sentimentMatch?.[1] || \"\";\nlet insight = insightMatch?.[1] || \"\";\nlet outlook = outlookMatch?.[1] || \"\";\n\n// Common cleanup\nconst cleanText = (t) => {\n  if (!t) return \"\";\n\n  return t\n    .replace(/\\*\\*/g, \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n};\n\nsummary = cleanText(summary);\nsentiment = cleanText(sentiment);\ninsight = cleanText(insight);\noutlook = cleanText(outlook);\n\n// Clean movers list\nconst movers = moversRaw\n  .split(/\\r?\\n+/)\n  .map(line =>\n    line\n      .replace(/^[-*•]\\s*/, \"\")\n      .replace(/\\s+/g, \" \")\n      .trim()\n  )\n  .filter(Boolean);\n\n// FIXED sentence trim (safe for decimals like 1.46%)\nconst trimToTwoSentences = (text) => {\n  if (!text) return \"\";\n\n  const sentences =\n    text.match(/(?:[^.!?]|\\d\\.\\d)+[.!?]+/g) || [text];\n\n  return sentences\n    .slice(0, 2)\n    .join(\" \")\n    .trim();\n};\n\nsummary = trimToTwoSentences(summary);\ninsight = trimToTwoSentences(insight);\noutlook = trimToTwoSentences(outlook);\n\n// Final output\nreturn [\n  {\n    json: {\n      market_summary: summary,\n      key_movers: movers,\n      risk_sentiment: sentiment,\n      insight,\n      outlook\n    }\n  }\n];"
+      },
+      "id": "a9100ef5-e4b2-47ae-bef1-7dd4dd9ab61a",
+      "name": "Parse AI Output",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2608,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=today's market summary",
+        "emailType": "text",
+        "message": "=Market Summary:\n{{ $('Parse AI Output').item.json.market_summary }}\n\nKey Movers:\n{{ $('Parse AI Output').item.json.key_movers.join('\\n') }}\n\nRisk Sentiment:\n{{ $('Parse AI Output').item.json.risk_sentiment }}\n\nInsight:\n{{ $('Parse AI Output').item.json.insight }}\n\noutlook:\n{{ $json.outlook }}",
+        "options": {}
+      },
+      "id": "e2f7f2da-f675-4778-b2e6-1f93129bffcb",
+      "name": "Send Today's market summary",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        3056,
+        112
+      ],
+      "webhookId": "a42c4067-aeaf-493c-a427-889ba6a71d9c",
+      "typeVersion": 2.2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "30KrMseLTibv1M20",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "ae89094e-0088-4343-9db8-81dd3d57fc80",
+      "name": "Generate Daily Market Report",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        784,
+        592
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2da88a5b-8b65-4617-a022-3f6aa09131e3",
+              "name": "api_base_url",
+              "type": "string",
+              "value": "https://api.twelvedata.com/time_series"
+            },
+            {
+              "id": "559dc6bb-e3f6-4960-aa9f-f76aae65f4d1",
+              "name": "twelve_api_key",
+              "type": "string",
+              "value": "8149f2bf029b4d95b58c1863a2fb875c"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "0efb9155-073c-4075-832c-93d3d57dca97",
+      "name": "Environment Config",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1008,
+        592
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "batchSize": "={{ 1 }}",
+        "options": {}
+      },
+      "id": "502630b9-18b5-4479-9426-312f60e524bf",
+      "name": "Rate Controlled Queue",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        1728,
+        560
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "89789f28-94a0-4ad1-88f8-74e5e0395233",
+      "name": "API Throttle",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1968,
+        576
+      ],
+      "webhookId": "e6191fff-9547-41fe-8452-ce2c74431cba",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      error_time: new Date().toISOString(),\n      error_status: $json.status,\n      error_message: $json.message || \"Unknown API error\",\n      failed_symbol: $json.meta?.symbol || \"N/A\"\n    }\n  }\n];"
+      },
+      "id": "9bdb2163-8645-4acc-a7cd-224167857e6d",
+      "name": "Log API Error",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2704,
+        624
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = [];\nlet runIndex = 0;\n\n// Loop through every execution run of the Fetch node\nwhile (true) {\n  try {\n    // Grab the data for the specific loop iteration\n    const rawData = $items(\"Fetch Asset Prices\", 0, runIndex);\n    \n    // Break if we've reached the end of the runs\n    if (!rawData || rawData.length === 0) break;\n\n    for (const item of rawData) {\n      const data = item.json;\n      const latest = data.values?.[0];\n\n      // If data is missing (e.g. rate limit hit), record the error instead of skipping\n      if (!latest) {\n        result.push({\n          symbol: data.meta?.symbol || data.symbol || \"Unknown\",\n          status: data.status || \"error\",\n          message: data.message || \"No data received (likely rate limit)\"\n        });\n        continue;\n      }\n\n      const open = parseFloat(latest.open);\n      const close = parseFloat(latest.close);\n      const changePercent = ((close - open) / open) * 100;\n\n      result.push({\n        symbol: data.meta.symbol,\n        asset_type: data.meta.type,\n        price: close,\n        open,\n        high: parseFloat(latest.high),\n        low: parseFloat(latest.low),\n        date: latest.datetime,\n        change_percent: Number(changePercent.toFixed(2)),\n        trend: changePercent > 0 ? \"Bullish\" : \"Bearish\",\n        status: \"success\"\n      });\n    }\n    runIndex++; // Move to the next execution run\n  } catch (error) {\n    // When runIndex exceeds the total number of runs, it throws an error. Break the loop.\n    break;\n  }\n}\n\nreturn [\n  {\n    json: {\n      market_data: result\n    }\n  }\n];"
+      },
+      "id": "0ece6cab-e490-4552-a052-617846dbc6aa",
+      "name": "Normalize Market Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2048,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "API Failure Alert",
+        "emailType": "text",
+        "message": "=Twelve Data API failed.\nStatus: {{ $json.status }}\nMessage: {{ $json.message }}",
+        "options": {}
+      },
+      "id": "a6fbae73-0e5c-4221-aef5-4b40e432fcc6",
+      "name": "Alert API Faliure",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        3104,
+        624
+      ],
+      "webhookId": "95d68b1f-70c7-4f1c-9f2d-d9a0ebcc9d3e",
+      "typeVersion": 2.2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "30KrMseLTibv1M20",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "16t7MmxqrZ-u5DRyclEFK_ASUykD4mpcWIrM6U3FpL7Y",
+          "mode": "list",
+          "cachedResultName": "Error Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16t7MmxqrZ-u5DRyclEFK_ASUykD4mpcWIrM6U3FpL7Y/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16t7MmxqrZ-u5DRyclEFK_ASUykD4mpcWIrM6U3FpL7Y/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Column Name",
+              "displayName": "Column Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Example",
+              "displayName": "Example",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "bac68de1-64f7-4985-bc6d-6fe469f65a64",
+      "name": "Log Daily Market Report",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2816,
+        112
+      ],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "EcGuxqeDyLCjeMTU",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1gza53grKBprU4rOecratsFemExhw4CZrDPxXL3GCFwc",
+          "mode": "list",
+          "cachedResultName": "Multi-asset",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gza53grKBprU4rOecratsFemExhw4CZrDPxXL3GCFwc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gza53grKBprU4rOecratsFemExhw4CZrDPxXL3GCFwc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Column Name",
+              "displayName": "Column Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Example",
+              "displayName": "Example",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "cf600bcc-c58d-4a61-8c86-36e9ed21d41b",
+      "name": "Append row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2896,
+        624
+      ],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "EcGuxqeDyLCjeMTU",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Environment Config').first().json.api_base_url }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.symbol }}"
+            },
+            {
+              "name": "interval",
+              "value": "1day"
+            },
+            {
+              "name": "outputsize",
+              "value": "1"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $('Environment Config').first().json.twelve_api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7fe0942c-51e6-49f6-857f-c67a134b34a8",
+      "name": "Fetch Asset Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2192,
+        576
+      ],
+      "typeVersion": 4.3
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Asset Splitting & API Fetch Pipeline\nThis section handles **asset breakdown and controlled data fetching** by splitting grouped assets into **individual symbols** for processing. It ensures smooth execution using **rate-controlled batching** and **API throttling**, preventing overload or failures while fetching real-time market data.\nThe pipeline guarantees **efficient API utilization**, maintains **data consistency** and enables reliable retrieval of **latest asset prices** for further analysis.",
+        "height": 448,
+        "width": 1184,
+        "color": 7
+      },
+      "id": "e6573189-685e-4df7-a899-b85cde1a733f",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1424,
+        496
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "5f62f53f-e04d-4c78-8256-6814021efa44",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "ok"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14c3b771-838e-4f1a-850c-37ea32ddd87e",
+      "name": "Validate API Response",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2416,
+        576
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\nconst output = [];\n\n// Define all asset classes\nconst assetGroups = [\n  { asset_class: \"Indices\", symbols: data.Indices },\n  { asset_class: \"Forex\", symbols: data.Forex },\n  { asset_class: \"Commodities\", symbols: data.Commodities }\n];\n\n// Split each asset group into individual symbols\nfor (const group of assetGroups) {\n  const symbols = group.symbols.split(',');\n\n  for (const symbol of symbols) {\n    output.push({\n      json: {\n        asset_class: group.asset_class,\n        symbol: symbol.trim()\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "id": "7bd9a42f-4788-44ab-947c-9d22c6cd5805",
+      "name": "split assests & Symbols",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1472,
+        560
+      ],
+      "typeVersion": 2
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Insights": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Market Insights",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Throttle": {
+      "main": [
+        [
+          {
+            "node": "Fetch Asset Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log API Error": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Log Daily Market Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert API Faliure": {
+      "main": [
+        [
+          {
+            "node": "Rate Controlled Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Market Assets": {
+      "main": [
+        [
+          {
+            "node": "split assests & Symbols",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Market Insights": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Environment Config": {
+      "main": [
+        [
+          {
+            "node": "Set Market Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Asset Prices": {
+      "main": [
+        [
+          {
+            "node": "Validate API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Alert API Faliure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Market Data": {
+      "main": [
+        [
+          {
+            "node": "AI Market Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Controlled Queue": {
+      "main": [
+        [
+          {
+            "node": "Normalize Market Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "API Throttle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate API Response": {
+      "main": [
+        [
+          {
+            "node": "Rate Controlled Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Daily Market Report": {
+      "main": [
+        [
+          {
+            "node": "Send Today's market summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split assests & Symbols": {
+      "main": [
+        [
+          {
+            "node": "Rate Controlled Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Daily Market Report": {
+      "main": [
+        [
+          {
+            "node": "Environment Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ab763dbe-cf01-4568-94f6-deaab227f5fd",
+  "meta": {
+    "templateId": "14805",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "39085c2c62d2a70e31524b3ff229a17d5546731ec810ff51e1d87eb0c83c018e"
+  },
+  "id": "c4xNOszC5Axo5DyN",
+  "tags": []
+}

@@ -1,0 +1,252 @@
+{
+  "name": "inbox manager",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -672,
+        128
+      ],
+      "id": "6b2bf9ff-13da-4953-bba0-a33bcc1c68d7",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "=subject{{ $json.headers.subject}}\nemail body: {{ $json.text }}\nsender email: {{ $json.from.value[0].address }}\nsender name :{{ $json.from.value[0].name }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Monotoring",
+              "description": "classify any masseges as Monitoring where the sender name or email matches any of the following :\neval@site24x7.com - size24x7"
+            },
+            {
+              "category": "Priority",
+              "description": " classify any masseges as Priority where the sender name or email matches any of the following: team@hostinger.com \nclassify it as priority if it seems important.\nclassify any message as priority where subject contains the keyword \"JSM-PRIORITY\" "
+            },
+            {
+              "category": "Newsletter",
+              "description": "classify any message as Newletter where the senders name or email matches any of the following\nlaura@appwrite.io\nmichael@mail.cursor.com\nhello@mail.grammarly.com\ncoteam@neon.tech\nivan@mail.notion.so\nhello@mail.daily.dev\ndaily.dev\nno-reply@n.dribbble.com\n \nclassify any message as Newletter where the subject contains the keywords\"JSM Newsletter\""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        128
+      ],
+      "id": "553c9e29-5390-47e1-a904-07a3f11903c0",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -376,
+        384
+      ],
+      "id": "6f973a0d-e0b2-451a-94f9-e5259f43d4f7",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "FjLBQYc4gt3xboAW",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_4868295720847663332"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        128
+      ],
+      "id": "5ebaffb4-2e19-4077-a0f4-d89cd8e41271",
+      "name": "Priority",
+      "webhookId": "d4142c7e-884e-4428-b607-853b82903eef",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_7446971671955262695"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        -64
+      ],
+      "id": "64775824-4278-4529-a982-0a532a050bc7",
+      "name": "Monitoring",
+      "webhookId": "d4142c7e-884e-4428-b607-853b82903eef",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_2481444756010289273"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        320
+      ],
+      "id": "5ab02754-b74e-41f7-bf55-332299acfd2e",
+      "name": "Newsletter",
+      "webhookId": "d4142c7e-884e-4428-b607-853b82903eef",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "INBOX"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        320
+      ],
+      "id": "e790aff7-bb34-41e0-a1c2-bca206117fa9",
+      "name": "Remove label from message",
+      "webhookId": "17932098-ab78-44ba-9070-38e390b1f1bd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Ru2T40abOR90L2IZ",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ac419411-d9fb-4cd8-946a-ee8765a19e85",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f1b6bda7f77dd4d12edc64c89ffd65f0bf64dab0f46e67478798e415cd1d17e"
+  },
+  "id": "Rli6PucgA364BvNX",
+  "tags": []
+}

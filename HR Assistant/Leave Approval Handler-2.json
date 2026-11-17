@@ -1,0 +1,1808 @@
+{
+  "name": "Leave Approval Handler-2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "callback_query",
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "342f0f11-191d-4024-8f2a-620223b4b35a",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2528,
+        768
+      ],
+      "webhookId": "6e39c522-cb94-4958-ad8b-6f1a4392c6e4",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d38e849d-4bf2-4bae-830d-fddd2d0a06c2",
+              "leftValue": "={{ $json.callback_query }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "95f6a66f-8f2c-4c7c-85d4-9dba300e4e14",
+      "name": "Is Callback Query?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2320,
+        768
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c4bbc39d-9394-4d3b-b250-19ae1e7edb34",
+      "name": "Ignore Non-Callback Update",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst cb = $json.callback_query || {};\nconst data = cb.data || '';\nconst [action, requestId] = data.split(':');\nreturn {\n  action,\n  request_id: requestId || '',\n  manager_telegram_id: cb.from && cb.from.id ? String(cb.from.id) : '',\n  callback_query_id: cb.id || '',\n  manager_chat_id: cb.message && cb.message.chat ? String(cb.message.chat.id) : '',\n  manager_message_id: cb.message ? cb.message.message_id : null\n};\n"
+      },
+      "id": "977e11d7-76f7-41b1-9580-a3c67701137e",
+      "name": "Parse Callback Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2096,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6438262c-7b53-4855-afc2-021cb1340f29",
+              "leftValue": "={{$json.action}}",
+              "rightValue": "^(leave_approve|leave_reject)$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bcf65094-3631-4b3f-afe1-8d9d75cacac3",
+      "name": "Valid Callback Action?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1872,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{$json.callback_query_id}}",
+        "additionalFields": {}
+      },
+      "id": "2051a490-d11c-464d-8bdb-0ec4d3d38121",
+      "name": "Answer Invalid Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1648,
+        832
+      ],
+      "webhookId": "084bf474-15af-4dce-becf-1f55bf2bbe76",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 327671811,
+          "mode": "list",
+          "cachedResultName": "Leave_Requests",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=327671811"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "request_id",
+              "lookupValue": "={{$json.request_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "26d2d71a-0151-4559-bcb1-16cfdeeda6c2",
+      "name": "Find Leave Request",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1648,
+        592
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fcd1b7c6-0117-4195-bc60-d40efdd8dad6",
+              "leftValue": "={{$json.request_id}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "db50d930-6a6a-4a6a-a595-9dfedde659b6",
+      "name": "Leave Request Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1440,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{$('Parse Callback Data').item.json.callback_query_id}}",
+        "additionalFields": {}
+      },
+      "id": "ee54d15c-1951-4cb9-93df-353db3878201",
+      "name": "Answer Request Not Found",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        768
+      ],
+      "webhookId": "10b33e50-2056-4b2a-a20e-e5155fccc12c",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1971707973,
+          "mode": "list",
+          "cachedResultName": "Approvals",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1971707973"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "request_id",
+              "lookupValue": "={{$('Parse Callback Data').item.json.request_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d7dbc8a-58df-4999-b179-dada3492d1a6",
+      "name": "Find Approval Record",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1216,
+        512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 541436557,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=541436557"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "telegram_id",
+              "lookupValue": "={{$('Parse Callback Data').item.json.manager_telegram_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9154bf39-7868-4885-9930-b2354cb08da8",
+      "name": "Find Employee By Telegram Id",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -992,
+        512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "b0d6d8a4-4089-4235-b585-5b53485c32f0",
+              "leftValue": "={{$json.employee_id}}",
+              "rightValue": "={{$('Find Leave Request').item.json.manager_id}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "24719a61-78c4-475a-bdff-f53365bd874f",
+      "name": "Authorized Manager?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -768,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{$('Parse Callback Data').item.json.callback_query_id}}",
+        "additionalFields": {}
+      },
+      "id": "c53869a2-2d46-46ff-bf8d-2db661cc05ac",
+      "name": "Answer Unauthorized",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        720
+      ],
+      "webhookId": "6dd8766f-43f3-4219-9e06-7ed05d59bf3f",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "5f2aeaae-fe8e-44fa-81aa-8d23a04372cd",
+              "leftValue": "={{$('Find Approval Record').item.json.status}}",
+              "rightValue": "Pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0cdd61cd-6165-40b0-9038-e42a8a1d45f8",
+      "name": "Still Pending?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{$('Parse Callback Data').item.json.callback_query_id}}",
+        "additionalFields": {}
+      },
+      "id": "3ad05654-7f96-4ebd-af95-bb701d49e4ef",
+      "name": "Answer Already Processed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -384,
+        512
+      ],
+      "webhookId": "75c1cd2e-f5ae-4f86-9663-37b33b08637d",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ $('Parse Callback Data').item.json.action === 'leave_approve' ? 0 : 1 }}"
+      },
+      "id": "44b750fc-a81b-4eba-a956-a71628f9c11b",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -336,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 327671811,
+          "mode": "list",
+          "cachedResultName": "Leave_Requests",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=327671811"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{$('Parse Callback Data').item.json.request_id}}",
+            "status": "Approved",
+            "approved_at": "={{new Date().toISOString()}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "request_id"
+          ],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "leave_type",
+              "displayName": "leave_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "from_date",
+              "displayName": "from_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "to_date",
+              "displayName": "to_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "days",
+              "displayName": "days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "manager_id",
+              "displayName": "manager_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rejected_at",
+              "displayName": "rejected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "8f77da2e-61e0-41fa-8835-f37ff88f718f",
+      "name": "Update Leave Request Approved",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -112,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1971707973,
+          "mode": "list",
+          "cachedResultName": "Approvals",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1971707973"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{$('Parse Callback Data').item.json.request_id}}",
+            "status": "Approved",
+            "approved_at": "={{new Date().toISOString()}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "request_id"
+          ],
+          "schema": [
+            {
+              "id": "approval_id",
+              "displayName": "approval_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "manager_id",
+              "displayName": "manager_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rejected_at",
+              "displayName": "rejected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "escalated",
+              "displayName": "escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "escalated_at",
+              "displayName": "escalated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "79e80ed6-8d91-4b8e-90fd-ca59c0168489",
+      "name": "Update Approval Approved",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        112,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1502025035,
+          "mode": "list",
+          "cachedResultName": "Leave_Balances",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1502025035"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "employee_id",
+              "lookupValue": "={{$('Find Leave Request').item.json.employee_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6685986b-50ed-434b-9e81-567ee3223dea",
+      "name": "Get Balance To Update",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        336,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst bal = $json;\nconst req = $('Find Leave Request').item.json;\nconst field = 'used_' + req.leave_type;\nconst updated = { ...bal };\nupdated[field] = Number(bal[field] || 0) + Number(req.days || 0);\nreturn updated;\n"
+      },
+      "id": "04247a52-5dae-422c-8809-1a7e4b8caf98",
+      "name": "Calculate Updated Balance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1502025035,
+          "mode": "list",
+          "cachedResultName": "Leave_Balances",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1502025035"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "employee_id": "={{$json.employee_id}}",
+            "annual": "={{$json.annual}}",
+            "casual": "={{$json.casual}}",
+            "sick": "={{$json.sick}}",
+            "used_annual": "={{$json.used_annual}}",
+            "used_casual": "={{$json.used_casual}}",
+            "used_sick": "={{$json.used_sick}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "employee_id"
+          ],
+          "schema": [
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "annual",
+              "displayName": "annual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "casual",
+              "displayName": "casual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sick",
+              "displayName": "sick",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_annual",
+              "displayName": "used_annual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_casual",
+              "displayName": "used_casual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_sick",
+              "displayName": "used_sick",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "4b3eb4cb-cc90-411a-a6cb-0f496b0be98e",
+      "name": "Update Leave Balance",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        768,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 541436557,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=541436557"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "employee_id",
+              "lookupValue": "={{$('Find Leave Request').item.json.employee_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "705f601a-2125-47bb-8d41-f19b601e065d",
+      "name": "Find Employee For Approve Notify",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        992,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.telegram_id}}",
+        "text": "=✅ Your leave request *{{$('Find Leave Request').item.json.request_id}}* ({{$('Find Leave Request').item.json.leave_type}}, {{$('Find Leave Request').item.json.from_date}} to {{$('Find Leave Request').item.json.to_date}}) has been *approved*.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "1508dc6b-a52c-4ad2-a119-a1b700dd1236",
+      "name": "Notify Employee Approved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1216,
+        64
+      ],
+      "webhookId": "dade82db-7db4-4425-91d3-f9d35436a152",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Parse Callback Data').item.json.manager_chat_id}}",
+        "text": "=You approved leave request {{$('Find Leave Request').item.json.request_id}}.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "68a6a490-a2be-405d-a868-bab8073c953c",
+      "name": "Notify Manager Approved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        64
+      ],
+      "webhookId": "ce22a949-5e3e-456b-88da-9df955b17926",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{$('Parse Callback Data').item.json.callback_query_id}}",
+        "additionalFields": {}
+      },
+      "id": "2c258a0b-5482-43ec-be27-e2bf1690cf2a",
+      "name": "Answer Callback Approved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1648,
+        64
+      ],
+      "webhookId": "a961d81e-f6ff-4fbe-a903-8ff95c84b5c2",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 327671811,
+          "mode": "list",
+          "cachedResultName": "Leave_Requests",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=327671811"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{$('Parse Callback Data').item.json.request_id}}",
+            "status": "Rejected",
+            "rejected_at": "={{new Date().toISOString()}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "request_id"
+          ],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "leave_type",
+              "displayName": "leave_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "from_date",
+              "displayName": "from_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "to_date",
+              "displayName": "to_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "days",
+              "displayName": "days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "manager_id",
+              "displayName": "manager_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "rejected_at",
+              "displayName": "rejected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "13d1cf14-9d8e-40ae-9d42-03131bf250ea",
+      "name": "Update Leave Request Rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -112,
+        672
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1971707973,
+          "mode": "list",
+          "cachedResultName": "Approvals",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1971707973"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{$('Parse Callback Data').item.json.request_id}}",
+            "status": "Rejected",
+            "rejected_at": "={{new Date().toISOString()}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "request_id"
+          ],
+          "schema": [
+            {
+              "id": "approval_id",
+              "displayName": "approval_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "manager_id",
+              "displayName": "manager_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "rejected_at",
+              "displayName": "rejected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "escalated",
+              "displayName": "escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "escalated_at",
+              "displayName": "escalated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "07a88133-d371-48bb-b7c7-b8059c9ad44e",
+      "name": "Update Approval Rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        112,
+        672
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 541436557,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=541436557"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "employee_id",
+              "lookupValue": "={{$('Find Leave Request').item.json.employee_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7bac1948-7dbb-4367-a144-133ee2b8bc84",
+      "name": "Find Employee For Reject Notify",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        336,
+        672
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.telegram_id}}",
+        "text": "=❌ Your leave request *{{$('Find Leave Request').item.json.request_id}}* ({{$('Find Leave Request').item.json.leave_type}}, {{$('Find Leave Request').item.json.from_date}} to {{$('Find Leave Request').item.json.to_date}}) has been *rejected*.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "06b00121-cfd1-4b8f-bdf4-d2189a0129ef",
+      "name": "Notify Employee Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        672
+      ],
+      "webhookId": "deed4986-ca25-4330-8ce2-7c16021ae35a",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{$('Parse Callback Data').item.json.callback_query_id}}",
+        "additionalFields": {}
+      },
+      "id": "4e46a736-ea1e-4d9a-9150-2196f2476509",
+      "name": "Answer Callback Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        672
+      ],
+      "webhookId": "c12b4fac-1808-4ac8-888f-25cf60d348f6",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Callback Query?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Callback Query?": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore Non-Callback Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback Data": {
+      "main": [
+        [
+          {
+            "node": "Valid Callback Action?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Callback Action?": {
+      "main": [
+        [
+          {
+            "node": "Find Leave Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Invalid Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Leave Request": {
+      "main": [
+        [
+          {
+            "node": "Leave Request Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leave Request Found?": {
+      "main": [
+        [
+          {
+            "node": "Find Approval Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Request Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Approval Record": {
+      "main": [
+        [
+          {
+            "node": "Find Employee By Telegram Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Employee By Telegram Id": {
+      "main": [
+        [
+          {
+            "node": "Authorized Manager?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorized Manager?": {
+      "main": [
+        [
+          {
+            "node": "Still Pending?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still Pending?": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Already Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Update Leave Request Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Leave Request Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Leave Request Approved": {
+      "main": [
+        [
+          {
+            "node": "Update Approval Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Approval Approved": {
+      "main": [
+        [
+          {
+            "node": "Get Balance To Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Balance To Update": {
+      "main": [
+        [
+          {
+            "node": "Calculate Updated Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Updated Balance": {
+      "main": [
+        [
+          {
+            "node": "Update Leave Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Leave Balance": {
+      "main": [
+        [
+          {
+            "node": "Find Employee For Approve Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Employee For Approve Notify": {
+      "main": [
+        [
+          {
+            "node": "Notify Employee Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee Approved": {
+      "main": [
+        [
+          {
+            "node": "Notify Manager Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Manager Approved": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Leave Request Rejected": {
+      "main": [
+        [
+          {
+            "node": "Update Approval Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Approval Rejected": {
+      "main": [
+        [
+          {
+            "node": "Find Employee For Reject Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Employee For Reject Notify": {
+      "main": [
+        [
+          {
+            "node": "Notify Employee Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee Rejected": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b3308263-5a28-4d23-9730-c2c2e80df879",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f117c48b5ac7fa56eb21cf2c3e07d3d95eb84ac376ecaefe63935a1d0499838"
+  },
+  "nodeGroups": [],
+  "id": "L0I3hXqkhn18fq86",
+  "tags": []
+}

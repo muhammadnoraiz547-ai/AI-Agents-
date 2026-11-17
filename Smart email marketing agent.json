@@ -1,0 +1,277 @@
+{
+  "name": "Smart email marketing agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e3ca2747-0fb3-48e5-8155-28a64df90034",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        432,
+        1408
+      ],
+      "webhookId": "347ec1c2-6bc0-4a0c-bde1-7c62d3900e55",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "#Overview\nYou are a Copy Assistant Agent responsible for managing and routing user requests to the appropriate specialized copywriting agents based on input. You are the control coordinator for generating and delivering high‑quality platform‑ready marketing copy.\n\n## Context\nYou are connected to multiple specialized copywriting tools:\n\nSales Letter Agent\nCold Email Copywriter\n\nYou also interact with an OpenAI chat model and a memory system to retain conversational context\n\nOnce copy is generated, your role is to deliver it clearly and accurately to the user and update the connected Google Doc with the final version.\n\n## Instrcutions\nWhen a user request is received, determine its intent and route it to the correct agent:\nAd Copy Agent → punchy headlines, descriptions & CTAs for display/search/social ads\nVSL Script Agent → full‑length video sales letters with hook, problem/solution, proof, CTA\nAd Script Agent → short (15–60 sec) video ad scripts for TikTok, Instagram, YouTube\nSales Letter Agent → long‑form email or web sales letters with storytelling, proof, bullets\nCold Email Copywriter → concise, personalized outreach sequences (subjects, intros, value props, follow‑ups)\n\n## Tools\nAd Copy Agent: punchy headlines, descriptions & CTAs for social/display/search ads\nVSL Script Agent: longer video‑sales‑letter scripts with hook, problem/solution, proof, CTA\nAd Script Agent: short video ad scripts (15–60 sec) for TikTok, Instagram, YouTube\nSales Letter Agent: long‑form email or web sales letters with story, proof, bullets\nCold Email Copywriter: concise outreach sequences—subject lines, intros, value props, follow‑ups\n\n## Examples\n“Need a Facebook ad for our new fitness app.” → route to Ad Copy Agent\n“Write a 3‑minute VSL script pitching our automation tool.” → route to VSL Script Agent\n“30‑second TikTok spot for our gourmet coffee.” → route to Ad Script Agent\n“Long‑form sales letter for B2B software.” → route to Sales Letter Agent\n“5‑step cold email sequence to logistics managers.” → route to Cold Email Copywriter\n\n## SOPs\nInterpret intent: read the user’s brief, spot format and goal\nSelect agent: map to the tool that matches (ad, VSL, email, etc.)\nPrompt agent: pass along the brief plus brand voice or any notes\nReview output: check tone, formatting, brand compliance\nDeliver: send clean, formatted copy back to the user\nDocument: paste final approved copy into the shared Google Doc\n\n## Final Notes\nKeep things concise, conversational, user‑focused\nAlways ask if you need more brand details or style guidelines\nStay friendly and collaborative\nStore context so follow‑up tweaks are seamless"
+        }
+      },
+      "id": "e1b1b753-3c5d-4114-80c6-bdec524b57ba",
+      "name": "Copy Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        784,
+        1408
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "7da8a0e8-f23c-4404-b0a8-cfce31ffc83c",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        656,
+        1632
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "e213359c-4eea-49b1-91a8-7d456396d601",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        784,
+        1632
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "https://docs.google.com/document/d/10mh3C04EhUcX13SqmSw-bV1Fnlwev_SqALzafTeowgY/edit?tab=t.0",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $json.output }}"
+            }
+          ]
+        }
+      },
+      "id": "9c1af61f-a0bc-4f0d-9143-a051e1b34c78",
+      "name": "Update a document",
+      "type": "n8n-nodes-base.googleDocs",
+      "position": [
+        1248,
+        1408
+      ],
+      "typeVersion": 2,
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "6Vvj5hM8j0MuZty4",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Call this tool when the user requests cold email sequences",
+        "workflowId": {
+          "__rl": true,
+          "value": "Iu59aIcwSMLB5aw9",
+          "mode": "list",
+          "cachedResultName": "My Sub-Workflow 2",
+          "cachedResultUrl": "/workflow/Iu59aIcwSMLB5aw9"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "43e28c30-cb70-4849-afbc-373b32b567f6",
+      "name": "Cold Email Writer Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        1040,
+        1632
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "description": "Call this tool when user request for sales letters sequence",
+        "workflowId": {
+          "__rl": true,
+          "value": "q0ZAnl0d08ufThXa",
+          "mode": "list",
+          "cachedResultName": "My Sub-Workflow 1",
+          "cachedResultUrl": "/workflow/q0ZAnl0d08ufThXa"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "d5226fca-a257-49f2-b58b-fe61a58b9214",
+      "name": "Sales Letter Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        912,
+        1632
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "sendTo": "=muhammadnoraiz547@gmail.com",
+        "subject": "={{ \"AI Automation Solution for Your Business\" }}",
+        "emailType": "text",
+        "message": "={{ $('Copy Assistant').item.json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        1408
+      ],
+      "id": "78442cb3-ed0a-46f8-8f0a-17ce8711641b",
+      "name": "Mail",
+      "webhookId": "97a2140a-0c17-4d49-85ea-a0919f9714a7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Copy Assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy Assistant": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Copy Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales Letter Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Copy Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cold Email Writer Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Copy Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Copy Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mail": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dce5e718-e026-4c1e-bf1b-bd0c814df2d5",
+  "meta": {
+    "templateId": "5828",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "536cfd7f6dacd395ba5622fd2c3de1b86913d8d41fed377e8bead1e0fd7c43eb"
+  },
+  "id": "oMpuNYQAz8al38a0",
+  "tags": []
+}

@@ -1,0 +1,1425 @@
+{
+  "name": "Smart SEO Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=Local SEO Content Ready – {{ $('Format Payload').item.json.businessName }}",
+        "message": "=Hi,\n\nThe local SEO content set for {{ $('Format Payload').item.json.businessName }} ({{ $('Format Payload').item.json.city }}) has been generated and saved to Google Drive.\n\nIncludes: city page, blog post, POI posts, and Q&A.\n\nThanks.",
+        "options": {}
+      },
+      "id": "9c419275-57dc-43b5-97d3-3cc2e942476a",
+      "name": "Gmail - Completion Notice",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2432,
+        -320
+      ],
+      "webhookId": "5d57f189-a72b-4d1e-9bde-0f32029209dc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1zPbx3lkRrcDwiwk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BP1V097D5",
+          "mode": "id"
+        },
+        "text": "=✅ Local SEO content pipeline complete for {{ $('Format Payload').item.json.businessName }} ({{ $('Format Payload').item.json.city }}). City page, blog, POI posts and Q&A are ready in Google Drive.",
+        "otherOptions": {}
+      },
+      "id": "59a9038d-1ee8-4ab7-91ea-89749c8aa08d",
+      "name": "Slack - Completion Notice",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2432,
+        -528
+      ],
+      "webhookId": "a3eb6a68-9b83-4ba0-8bf7-45b717b2e931",
+      "credentials": {
+        "slackApi": {
+          "id": "8CewjzVD6hLYR5VE",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "id": "17807298-488e-416b-847e-bf26b474d88f",
+      "name": "Merge - All Content Done",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        2208,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $('Clean POI Content').item.json.cleanedText }}"
+            }
+          ]
+        }
+      },
+      "id": "c5d45f35-addb-4134-9d71-65c68ff0ae3b",
+      "name": "Insert POI Content",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -112
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create POI Folder').item.json.id }}"
+        },
+        "title": "=POI Posts - {{ $('Format Payload').item.json.businessName }}"
+      },
+      "id": "10223d7b-d769-43fb-9205-e44f52f849c6",
+      "name": "Create POI Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -112
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $('Gemini - Generate POI Posts').item.json?.candidates?.[0]?.content?.parts?.[0]?.text || 'Content generation failed';\nreturn [{ json: { cleanedText: text.replace(/```/g, '').trim() } }];"
+      },
+      "id": "c97481b0-843f-4152-ab65-762f3ca6d1c4",
+      "name": "Clean POI Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `Write 5 local SEO POI posts (each 400-500 words) for these points of interest near \"${$('Format Payload').item.json.businessName}\" in \"${$('Format Payload').item.json.city}\": ${JSON.stringify($('Format Payload').item.json.poiList)}. Mention proximity and relevance to the business.` }] }], generationConfig: { maxOutputTokens: 8192 } }) }}",
+        "options": {}
+      },
+      "id": "b2852fc5-298d-48b7-bc8d-349d34991bbe",
+      "name": "Gemini - Generate POI Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        -112
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "XK6VVhw6yYK9O3lE",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $('Clean QA Content').item.json.cleanedText }}"
+            }
+          ]
+        }
+      },
+      "id": "ff2bfa86-3411-4066-b0b0-9e898b9dfc8d",
+      "name": "Insert QA Content",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        -352
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create QA Folder').item.json.id }}"
+        },
+        "title": "=Q&A - {{ $('Format Payload').item.json.businessName }}"
+      },
+      "id": "2d14d4bd-342d-4cdd-870b-889bebac8680",
+      "name": "Create QA Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        -352
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $('Gemini - Generate Q&A').item.json?.candidates?.[0]?.content?.parts?.[0]?.text || 'Content generation failed';\nreturn [{ json: { cleanedText: text.replace(/```/g, '').trim() } }];"
+      },
+      "id": "530a249b-9ec9-4d4f-b0ad-8e136d3d0afa",
+      "name": "Clean QA Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `Write 8 local SEO FAQ Q&A pairs for \"${$('Format Payload').item.json.businessName}\" in \"${$('Format Payload').item.json.city}\", category \"${$('Format Payload').item.json.category}\". Format as Q: ... A: ... pairs, optimized for featured snippets.` }] }], generationConfig: { maxOutputTokens: 2048 } }) }}",
+        "options": {}
+      },
+      "id": "2aaad87c-3171-4486-a490-6e454e341082",
+      "name": "Gemini - Generate Q&A",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        -368
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "XK6VVhw6yYK9O3lE",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $('Clean Blog Content').item.json.cleanedText }}"
+            }
+          ]
+        }
+      },
+      "id": "5544168f-c27c-4b9e-8d5f-d12c0ec35fb0",
+      "name": "Insert Blog Content",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        -576
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create Blog Folder').item.json.id }}"
+        },
+        "title": "=Blog Post - {{ $('Format Payload').item.json.businessName }}"
+      },
+      "id": "e2002d28-d716-4dc7-9fdc-576b903da0c9",
+      "name": "Create Blog Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -576
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $('Gemini - Generate Blog Post').item.json?.candidates?.[0]?.content?.parts?.[0]?.text || 'Content generation failed';\nreturn [{ json: { cleanedText: text.replace(/```/g, '').trim() } }];"
+      },
+      "id": "fd9b0369-092c-4ba3-b846-c25f52f9b3b2",
+      "name": "Clean Blog Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        -576
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `Write a local SEO blog post (900-1100 words) for \"${$('Format Payload').item.json.businessName}\" in \"${$('Format Payload').item.json.city}\". Topic: tips related to \"${$('Format Payload').item.json.category}\". Use this research: ${$('Gemini - Company Research').item.json.candidates[0].content.parts[0].text}` }] }], generationConfig: { maxOutputTokens: 4096 } }) }}",
+        "options": {}
+      },
+      "id": "ce4077c0-9684-4b1f-8a62-94ef6f5825af",
+      "name": "Gemini - Generate Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        976,
+        -576
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "XK6VVhw6yYK9O3lE",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $('Create City Page Doc').item.json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $json.cleanedText }}"
+            }
+          ]
+        }
+      },
+      "id": "db0a647f-56e3-4566-9ee0-1d9d61942acf",
+      "name": "Insert City Content",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -880
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $('Gemini - Generate City Page').item.json?.candidates?.[0]?.content?.parts?.[0]?.text || 'Content generation failed';\nreturn [{ json: { cleanedText: text.replace(/```/g, '').trim() } }];"
+      },
+      "id": "447c0322-b044-439d-bcb0-e9ab1e000d36",
+      "name": "Clean City Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -880
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `Write a complete Local SEO City Page (H1 + Intro 150-200 words + Services 200 words + Why Choose Us 150 words + Local Areas 150 words + CTA 80 words) for \"${$('Format Payload').item.json.businessName}\" in \"${$('Format Payload').item.json.city}\" (category: ${$('Format Payload').item.json.category}). Use this research: ${$('Gemini - Company Research').item.json.candidates[0].content.parts[0].text}` }] }], generationConfig: { maxOutputTokens: 4096 } }) }}",
+        "options": {}
+      },
+      "id": "9a2d14c0-b1f5-4025-9ae9-13e9c84b7d6a",
+      "name": "Gemini - Generate City Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        -880
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "XK6VVhw6yYK9O3lE",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create City Folder').item.json.id }}"
+        },
+        "title": "=City Page - {{ $('Format Payload').item.json.city }}"
+      },
+      "id": "88da29c1-d4b6-49f2-8a8c-75ca41a2912c",
+      "name": "Create City Page Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        656,
+        -880
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "16efakC6aCHEey2v",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BP1V097D5",
+          "mode": "id"
+        },
+        "text": "=⚠️ Research validation failed for {{ $('Format Payload').item.json.businessName }} — stopping pipeline.",
+        "otherOptions": {}
+      },
+      "id": "416e774c-befe-4119-820d-873cfec45df3",
+      "name": "Slack - Research Failed",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        16
+      ],
+      "webhookId": "777cdb26-2b12-4bf1-aa5f-2369574034cc",
+      "credentials": {
+        "slackApi": {
+          "id": "8CewjzVD6hLYR5VE",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.candidates?.[0]?.content?.parts?.[0]?.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e79e3fed-117d-4652-a5cf-4cde23097765",
+      "name": "Validate Research",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `Research the business \"${$('Format Payload').item.json.businessName}\" located at \"${$('Format Payload').item.json.address}\" in \"${$('Format Payload').item.json.city}\", category \"${$('Format Payload').item.json.category}\". Website: ${$('Format Payload').item.json.website}. Return a concise JSON with keys: summary, services, targetAudience, uniqueSellingPoints, competitors.` }] }], generationConfig: { maxOutputTokens: 4096 } }) }}",
+        "options": {}
+      },
+      "id": "4f9c65b6-3802-41f3-96a0-c8477e9812e0",
+      "name": "Gemini - Company Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        -416
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "XK6VVhw6yYK9O3lE",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "id": "277b6bc5-242b-4473-a126-7c9316c12a4e",
+      "name": "Merge Folders",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -16,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "POI Posts",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create Main Folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "d0c8cbb8-7b14-4761-b42d-13b32ee4e6a8",
+      "name": "Create POI Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -240,
+        -176
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yZOISGTr6Li2kyBx",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "Q&A",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create Main Folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "0d01101b-d8a3-467d-9c54-6c75447ee34f",
+      "name": "Create QA Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -240,
+        -320
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yZOISGTr6Li2kyBx",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "Blog Posts",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create Main Folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "fa9fed40-1ff5-4366-b529-2a9d2aac0fdc",
+      "name": "Create Blog Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -240,
+        -464
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yZOISGTr6Li2kyBx",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "City Pages",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {}
+      },
+      "id": "4ab3d4a0-36ea-4daf-87ea-64239d8d1c35",
+      "name": "Create City Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -240,
+        -624
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yZOISGTr6Li2kyBx",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.businessName }} - {{ $json.city }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1sdcFw08E_HYixTN3JZ14lxCA0LUlb2jZ",
+          "mode": "list",
+          "cachedResultName": "SEO"
+        },
+        "options": {}
+      },
+      "id": "a1d7a95b-ba55-4030-9670-8579a2bd78e9",
+      "name": "Create Main Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -464,
+        -416
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yZOISGTr6Li2kyBx",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "team": "90182963886",
+        "space": "901812429346",
+        "folder": "901816035814",
+        "list": "901820379965",
+        "name": "=Local SEO Content – {{ $json.businessName }} ({{ $json.city }})",
+        "additionalFields": {
+          "content": "=Auto-created by Local SEO Content Pipeline for {{ $json.businessName }}"
+        }
+      },
+      "id": "8238997d-d782-40be-97e3-beb6b7808aca",
+      "name": "Create ClickUp Task",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        -416
+      ],
+      "credentials": {
+        "clickUpOAuth2Api": {
+          "id": "pga2yJ58Df7FgywN",
+          "name": "ClickUp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1sl7uqk5uOy61myQ7Nd0kqPCEFJOaoQt8EcVajRy3eI4",
+          "mode": "list",
+          "cachedResultName": "Local SEO Intake Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sl7uqk5uOy61myQ7Nd0kqPCEFJOaoQt8EcVajRy3eI4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 473631887,
+          "mode": "list",
+          "cachedResultName": "Untitled",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sl7uqk5uOy61myQ7Nd0kqPCEFJOaoQt8EcVajRy3eI4/edit#gid=473631887"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Request ID": "={{ $json.requestId }}",
+            "Business Name": "={{ $json.businessName }}",
+            "City": "={{ $json.city }}",
+            "Category": "={{ $json.category }}",
+            "Due Date": "={{ $json.dueDate }}",
+            "Status": "Started"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Request ID",
+              "displayName": "Request ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Business Name",
+              "displayName": "Business Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "335193b2-f8cd-4d8a-af8f-4991a20dd608",
+      "name": "Log to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -896,
+        -416
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "businessName",
+              "type": "string",
+              "value": "={{ $json['Business Name'] }}"
+            },
+            {
+              "id": "b2",
+              "name": "city",
+              "type": "string",
+              "value": "={{ $json.City }}"
+            },
+            {
+              "id": "b3",
+              "name": "category",
+              "type": "string",
+              "value": "={{ $json.Category }}"
+            },
+            {
+              "id": "b4",
+              "name": "address",
+              "type": "string",
+              "value": "={{ $json.Address }}"
+            },
+            {
+              "id": "b5",
+              "name": "website",
+              "type": "string",
+              "value": "={{ $json.Website || '' }}"
+            },
+            {
+              "id": "b6",
+              "name": "poiList",
+              "type": "array",
+              "value": "={{ ($json['POI Names'] || '').split(',').map(n => ({ poiName: n.trim() })).filter(p => p.poiName) }}"
+            },
+            {
+              "id": "b7",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $now.toMillis() }}"
+            },
+            {
+              "id": "b8",
+              "name": "dueDate",
+              "type": "string",
+              "value": "={{ $now.plus({ days: 3 }).toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1dca2c5a-870e-4a0e-93a2-83ff4e0a44db",
+      "name": "Format Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1120,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Local SEO Content Request",
+        "formDescription": "Grow your Business with us — we will automatically generate Local SEO content",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Business Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "City",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Category",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Address",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Website"
+            },
+            {
+              "fieldLabel": "POI Names"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "42f04819-1d06-4b22-b670-76ad9edf5cbc",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -1344,
+        -416
+      ],
+      "webhookId": "7e42bbf2-70db-4d36-b559-a7e25b126665"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        -368
+      ],
+      "id": "33bfcb7e-15ca-4a53-9fe9-d783e54feb7c",
+      "name": "Wait1",
+      "webhookId": "1b11a3e7-72c7-4577-99f5-effc65b0b153"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        -576
+      ],
+      "id": "1b14537f-d999-4d3b-98ce-912cec89db74",
+      "name": "Wait",
+      "webhookId": "0c2813a6-f4af-400b-8156-9c28dde2ba62"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        -160
+      ],
+      "id": "67c5644a-3e10-4ac2-9012-f3aed7c54c43",
+      "name": "Wait2",
+      "webhookId": "422be6a2-eda0-4516-8cb4-bb12973adc6b"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Merge - All Content Done": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Completion Notice",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack - Completion Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert POI Content": {
+      "main": [
+        [
+          {
+            "node": "Merge - All Content Done",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Create POI Doc": {
+      "main": [
+        [
+          {
+            "node": "Insert POI Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean POI Content": {
+      "main": [
+        [
+          {
+            "node": "Create POI Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Generate POI Posts": {
+      "main": [
+        [
+          {
+            "node": "Clean POI Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert QA Content": {
+      "main": [
+        [
+          {
+            "node": "Merge - All Content Done",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Create QA Doc": {
+      "main": [
+        [
+          {
+            "node": "Insert QA Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean QA Content": {
+      "main": [
+        [
+          {
+            "node": "Create QA Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Generate Q&A": {
+      "main": [
+        [
+          {
+            "node": "Clean QA Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Blog Content": {
+      "main": [
+        [
+          {
+            "node": "Merge - All Content Done",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create Blog Doc": {
+      "main": [
+        [
+          {
+            "node": "Insert Blog Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Blog Content": {
+      "main": [
+        [
+          {
+            "node": "Create Blog Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Generate Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Clean Blog Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert City Content": {
+      "main": [
+        [
+          {
+            "node": "Merge - All Content Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean City Content": {
+      "main": [
+        [
+          {
+            "node": "Insert City Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Generate City Page": {
+      "main": [
+        [
+          {
+            "node": "Clean City Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create City Page Doc": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Generate City Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Research": {
+      "main": [
+        [
+          {
+            "node": "Create City Page Doc",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack - Research Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Company Research": {
+      "main": [
+        [
+          {
+            "node": "Validate Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Folders": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Company Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create POI Folder": {
+      "main": [
+        [
+          {
+            "node": "Merge Folders",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Create QA Folder": {
+      "main": [
+        [
+          {
+            "node": "Merge Folders",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Create Blog Folder": {
+      "main": [
+        [
+          {
+            "node": "Merge Folders",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create City Folder": {
+      "main": [
+        [
+          {
+            "node": "Merge Folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Main Folder": {
+      "main": [
+        [
+          {
+            "node": "Create POI Folder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create QA Folder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Blog Folder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create City Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ClickUp Task": {
+      "main": [
+        [
+          {
+            "node": "Create Main Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Create ClickUp Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Payload": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Format Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Generate Q&A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Generate Blog Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Generate POI Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "47fda4a0-edfc-4d67-86ea-2f0f4e52f5f0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f117c48b5ac7fa56eb21cf2c3e07d3d95eb84ac376ecaefe63935a1d0499838"
+  },
+  "nodeGroups": [],
+  "id": "yvXB9JdgJq2veoja",
+  "tags": []
+}

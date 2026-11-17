@@ -1,0 +1,2070 @@
+{
+  "name": "AI Case Study Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Case Study Intake",
+        "formDescription": "Delivered project ki asli details bharo. Jitni sachchi details, utna behtar content. Results me sirf wahi likho jo sach me hua.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Project Title",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Client Name",
+              "placeholder": "Internal use. Anonymous project me kabhi publish nahi hota"
+            },
+            {
+              "fieldLabel": "Industry",
+              "placeholder": "e.g. Restaurant, Real estate, Healthcare",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Problem",
+              "fieldType": "textarea",
+              "placeholder": "Client ko kya problem thi? (kam az kam 30 characters)",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Solution Built",
+              "fieldType": "textarea",
+              "placeholder": "Tumne kya banaya aur kaise kaam karta hai?",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Tools Used",
+              "placeholder": "n8n, Gemini, Vapi, Google Sheets..."
+            },
+            {
+              "fieldLabel": "Results",
+              "fieldType": "textarea",
+              "placeholder": "Measurable ya observable results. Numbers sirf sachche daalo.",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Sharing Permission",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Name can be shared"
+                  },
+                  {
+                    "option": "Anonymous only"
+                  },
+                  {
+                    "option": "Internal only (no content)"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Project Link",
+              "placeholder": "Optional (sirf internal reference)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cf20f663-9c29-4b7a-8c2c-0623bae2789d",
+      "name": "Trigger: Case Study Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        336
+      ],
+      "webhookId": "2b2011b1-1ff6-4ae2-ac9a-66cbdd6fef4a"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8219e84c-9f72-4652-bcdd-89c87ae1f371",
+              "name": "sheet_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "9d3d308b-2b32-441c-9969-245db340eb59",
+              "name": "notify_email",
+              "value": "REPLACE_WITH_YOUR_GMAIL_ADDRESS",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ecfe6ae0-897e-4dc7-8f7c-a4eea11c95db",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 553669438,
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=553669438"
+        },
+        "options": {}
+      },
+      "id": "bbdab520-f22d-4a71-8670-55f62aa7789a",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1360,
+        336
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst config = {};\nfor (const r of rows) {\n  if (r.key) config[String(r.key).trim()] = String(r.value ?? '').trim();\n}\nreturn [{ json: { config } }];"
+      },
+      "id": "0ce1ee2e-6e13-480f-9b2c-336432ef7474",
+      "name": "Build Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Build Config').first().json.config;\nconst raw = $('Settings').first().json;\nconst tz = cfg.timezone || 'Asia/Karachi';\nconst c = k => String(raw[k] ?? '').trim();\nconst perm = c('Sharing Permission');\nconst anonymous = perm === 'Anonymous only';\nlet ok = true;\nlet msg = '';\nif (perm === 'Internal only (no content)') {\n  ok = false;\n  msg = '🔒 Ye project \"Internal only\" hai, isliye public content nahi banaya gaya aur kuch store bhi nahi hua.';\n} else if (c('Problem').length < 30 || c('Solution Built').length < 30 || c('Results').length < 15) {\n  ok = false;\n  msg = '✍️ Details kam hain. Problem aur Solution kam az kam 30 characters, Results kam az kam 15 characters me likho, phir form dobara bhejo.';\n}\nreturn [{ json: {\n  ok, msg,\n  cs_id: 'CS-' + String(Date.now()).slice(-8),\n  created_at: new Date().toLocaleString('sv-SE', { timeZone: tz }),\n  title: c('Project Title'),\n  client_name: c('Client Name'),\n  stored_client_name: perm === 'Name can be shared' ? c('Client Name') : '',\n  industry: c('Industry'),\n  problem: c('Problem'),\n  solution: c('Solution Built'),\n  tools: c('Tools Used'),\n  results: c('Results'),\n  permission: perm,\n  anonymous,\n  link: c('Project Link')\n} }];"
+      },
+      "id": "8e5bd36b-76ac-48ac-bbfe-98258bfd9480",
+      "name": "Normalize Case",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "b376bb3e-9c99-4a87-9c9e-12a7d1c72886",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "364d731f-69a5-43e3-ac54-c0fd24c6eb6c",
+      "name": "Can Generate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "=muhammadnoraiz547@gmail.com",
+        "subject": "Case study: content nahi bana",
+        "emailType": "text",
+        "message": "={{ $json.msg }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "719e77c7-bfec-4e7c-ac25-72b1ea6fc43e",
+      "name": "Gmail: Not Generated",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2544,
+        528
+      ],
+      "webhookId": "05a37f46-0f3d-470c-974f-d30e8c74695e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Project title: ' + $('Normalize Case').first().json.title + '\\nIndustry: ' + $('Normalize Case').first().json.industry + '\\nAnonymous: ' + ($('Normalize Case').first().json.anonymous ? 'yes (do not name the client)' : 'no') + ($('Normalize Case').first().json.anonymous ? '' : '\\nClient: ' + $('Normalize Case').first().json.client_name) + '\\nProblem: ' + $('Normalize Case').first().json.problem + '\\nSolution built: ' + $('Normalize Case').first().json.solution + '\\nTools: ' + $('Normalize Case').first().json.tools + '\\nResults (the only facts you may use): ' + $('Normalize Case').first().json.results }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a careful case-study editor. Use ONLY the facts provided. Never invent numbers, client names, results, timelines or tools. If the results contain no numbers, keep them qualitative. If anonymous is yes, never name the client and describe the industry generically. Write in English.\n\nReturn ONLY valid JSON, no markdown fences:\n{\"headline\":\"max 80 characters\",\"problem\":\"2 sentences\",\"approach\":[\"3 to 5 short steps\"],\"solution\":\"2-3 sentences\",\"results\":[\"bullets taken only from the provided results\"],\"lesson\":\"1-2 sentences\",\"audience_takeaway\":\"1 sentence\"}"
+            }
+          ]
+        }
+      },
+      "id": "5d63d777-e5da-4535-bea0-0f59f4039251",
+      "name": "Structure AI",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2448,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "id": "05cc9daa-1268-4ae7-83b3-58d37b85d06e",
+      "name": "Gemini: Structure",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        400
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const parseJSON = raw => {\n  const cleaned = String(raw || '').replace(/```json|```/g, '').trim();\n  try { return JSON.parse(cleaned); } catch (e) {}\n  const m = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (!m) return null;\n  try { return JSON.parse(m[0]); } catch (e) { return null; }\n};\nconst d = parseJSON($input.first().json.text || $input.first().json.output || '');\nif (!d || !d.headline || !d.problem || !d.solution) throw new Error('Case study structure JSON parse nahi hua');\nreturn [{ json: { structure: d, structure_json: JSON.stringify(d) } }];"
+      },
+      "id": "08cc71c8-59a6-4e9d-b153-7524f2b45923",
+      "name": "Parse Structure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Structured case study (use only these facts):\\n' + $('Parse Structure').first().json.structure_json + '\\nTools: ' + $('Normalize Case').first().json.tools + '\\nAnonymous: ' + ($('Normalize Case').first().json.anonymous ? 'yes' : 'no') }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are an expert B2B content writer.\nNiche: {{ $('Build Config').first().json.config.niche }}\nAudience: {{ $('Build Config').first().json.config.audience }}\nTone: {{ $('Build Config').first().json.config.tone }}\nLanguage: {{ $('Build Config').first().json.config.language }}\n\nTurn the structured case study into three assets. Use ONLY facts from it. No invented stats, clients or guarantees.\n1) linkedin: hook (max 12 words) + body (Problem > Solution > Result > Lesson, short paragraphs, emoji bullets for key points, total post 900-1300 characters, no links, no engagement bait) + 3 to 5 hashtags. CTA style: {{ $('Build Config').first().json.config.cta_style }}. Never use these words: {{ $('Build Config').first().json.config.avoid_words }}.\n2) carousel: exactly 8 slides (1 hook title, 2 problem, 3 why it mattered, 4 approach, 5 solution, 6 results, 7 lesson, 8 soft CTA). Each slide has a title (max 8 words) and text (max 30 words).\n3) fiverr: portfolio title (max 80 characters), description (max 1000 characters: what was built, tools, outcome; no links, no contact details, no prices) and up to 5 tags.\n\nReturn ONLY valid JSON, no markdown fences:\n{\"linkedin\":{\"hook\":\"...\",\"body\":\"...\",\"hashtags\":[\"#tag\"]},\"carousel\":{\"slides\":[{\"title\":\"...\",\"text\":\"...\"}]},\"fiverr\":{\"title\":\"...\",\"description\":\"...\",\"tags\":[\"...\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "f0d7a113-5d2f-4e24-893c-07e52b54f7e5",
+      "name": "Content Pack AI",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "id": "a683e723-a5be-4742-93f9-0ab07c76a5e2",
+      "name": "Gemini: Content",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        1024
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const parseJSON = raw => {\n  const cleaned = String(raw || '').replace(/```json|```/g, '').trim();\n  try { return JSON.parse(cleaned); } catch (e) {}\n  const m = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (!m) return null;\n  try { return JSON.parse(m[0]); } catch (e) { return null; }\n};\nconst d = parseJSON($input.first().json.text || $input.first().json.output || '');\nif (!d || !d.linkedin || !d.carousel || !d.fiverr) throw new Error('Content pack JSON parse nahi hua');\nconst cs = $('Normalize Case').first().json;\nconst warnings = [];\nlet scrubbed = false;\nconst esc = s => s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\nconst scrub = t => {\n  const s = String(t ?? '');\n  if (cs.anonymous && cs.client_name && cs.client_name.length > 1) {\n    const re = new RegExp(esc(cs.client_name), 'gi');\n    if (re.test(s)) { scrubbed = true; return s.replace(re, 'the client'); }\n  }\n  return s;\n};\nconst li = d.linkedin;\nconst hook = scrub(li.hook).trim();\nlet body = scrub(li.body).trim();\nif (!hook || body.length < 250) throw new Error('LinkedIn draft incomplete ya bohat chhota hai');\nif (body.startsWith(hook)) body = body.slice(hook.length).trim();\nconst tags = (Array.isArray(li.hashtags) ? li.hashtags : String(li.hashtags || '').split(/\\s+/))\n  .map(t => String(t).trim()).filter(Boolean).map(t => (t.startsWith('#') ? t : '#' + t)).slice(0, 5).join(' ');\nconst finalPost = `${hook}\\n\\n${body}\\n\\n${tags}`;\nif (finalPost.length > 3000) throw new Error('LinkedIn draft 3000 characters se zyada hai');\nconst slides = (Array.isArray(d.carousel.slides) ? d.carousel.slides : []).slice(0, 8)\n  .map(s => ({ title: scrub(s.title).trim(), text: scrub(s.text).trim() }));\nif (slides.length < 6) throw new Error('Carousel outline incomplete hai');\nconst fv = d.fiverr;\nconst fiverr = {\n  title: scrub(fv.title).trim().slice(0, 80),\n  description: scrub(fv.description).trim().slice(0, 1000),\n  tags: (Array.isArray(fv.tags) ? fv.tags : []).map(t => scrub(t).trim()).filter(Boolean).slice(0, 5)\n};\n// fact guard: flag significant numbers that are not in the form input\nconst source = [cs.title, cs.problem, cs.solution, cs.tools, cs.results].join(' ').toLowerCase().replace(/,/g, '');\nconst allText = [finalPost, slides.map(s => s.title + ' ' + s.text).join(' '), fiverr.title, fiverr.description].join(' ');\nconst nums = allText.match(/\\$?\\d[\\d,]*\\.?\\d*\\s?(%|x|k|m)?/gi) || [];\nconst unverified = [...new Set(nums.map(n => n.trim()).filter(n => {\n  const digits = n.replace(/[^\\d.]/g, '').replace(/\\.$/, '');\n  if (!digits) return false;\n  const significant = /[%$]/.test(n) || digits.replace('.', '').length >= 2;\n  if (!significant || /^(19|20)\\d\\d$/.test(digits)) return false;\n  return !source.includes(digits);\n}))];\nif (unverified.length) warnings.push('Ye numbers form ke input me nahi mile, post karne se pehle verify karo: ' + unverified.join(', '));\nif (scrubbed) warnings.push('Client ka naam anonymous project me scrub kiya gaya.');\nreturn [{ json: {\n  hook, hashtags: tags, final_post: finalPost, slides,\n  carousel_json: JSON.stringify(slides),\n  fiverr, fiverr_tags: fiverr.tags.join(', '),\n  warnings, warnings_text: warnings.join(' | '),\n  status: 'Pending Approval'\n} }];"
+      },
+      "id": "40734d91-a1b6-4dde-9c78-bce4b9187416",
+      "name": "Parse Pack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1272169577,
+          "mode": "list",
+          "cachedResultName": "Case_Studies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1272169577"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cs_id": "={{ $('Normalize Case').first().json.cs_id }}",
+            "created_at": "={{ $('Normalize Case').first().json.created_at }}",
+            "title": "={{ $('Normalize Case').first().json.title }}",
+            "client_name": "={{ $('Normalize Case').first().json.stored_client_name }}",
+            "industry": "={{ $('Normalize Case').first().json.industry }}",
+            "permission": "={{ $('Normalize Case').first().json.permission }}",
+            "problem": "={{ $('Normalize Case').first().json.problem }}",
+            "solution": "={{ $('Normalize Case').first().json.solution }}",
+            "tools": "={{ $('Normalize Case').first().json.tools }}",
+            "results": "={{ $('Normalize Case').first().json.results }}",
+            "linkedin_post": "={{ $('Parse Pack').first().json.final_post }}",
+            "carousel_json": "={{ $('Parse Pack').first().json.carousel_json }}",
+            "fiverr_title": "={{ $('Parse Pack').first().json.fiverr.title }}",
+            "fiverr_description": "={{ $('Parse Pack').first().json.fiverr.description }}",
+            "fiverr_tags": "={{ $('Parse Pack').first().json.fiverr_tags }}",
+            "status": "Pending Approval"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "cs_id",
+              "displayName": "cs_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permission",
+              "displayName": "permission",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "problem",
+              "displayName": "problem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "solution",
+              "displayName": "solution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tools",
+              "displayName": "tools",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "results",
+              "displayName": "results",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_post",
+              "displayName": "linkedin_post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "carousel_json",
+              "displayName": "carousel_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_title",
+              "displayName": "fiverr_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_description",
+              "displayName": "fiverr_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_tags",
+              "displayName": "fiverr_tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "warnings",
+              "displayName": "warnings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_ref",
+              "displayName": "linkedin_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "470d2e67-9ec3-44f5-b9df-70b192086ae4",
+      "name": "Log Case Study",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1584,
+        832
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cs = $('Normalize Case').first().json;\nconst p = $('Parse Pack').first().json;\nconst slides = p.slides.map((s, i) => `${i + 1}. ${s.title}: ${s.text.slice(0, 160)}`).join('\\n');\nconst warn = p.warnings.length ? '\\n\\n⚠️ ' + p.warnings.join('\\n⚠️ ') : '';\nconst text = `📦 Content pack: ${cs.title} (${cs.cs_id})\\n\\n🛒 Fiverr portfolio\\nTitle: ${p.fiverr.title}\\n${p.fiverr.description}\\nTags: ${p.fiverr_tags}\\n\\n🎠 Carousel outline\\n${slides}${warn}\\n\\nSab Case_Studies sheet me saved hai. Ab LinkedIn post ka approval email aa rahi hai.`;\nreturn [{ json: { text } }];"
+      },
+      "id": "b3bb9a99-411e-4965-a14d-82dc40154b45",
+      "name": "Build Pack Msg",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "=muhammadnoraiz547@gmail.com",
+        "subject": "={{ '📦 Content pack: ' + $('Normalize Case').first().json.title + ' (' + $('Normalize Case').first().json.cs_id + ')' }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d71e5c29-33fb-4645-93e9-f9783830c02c",
+      "name": "Gmail: Content Pack",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2128,
+        832
+      ],
+      "webhookId": "23a5152c-53f7-409c-bd27-b5f06cb9120a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "=muhammadnoraiz547@gmail.com",
+        "subject": "={{ '✅ Approve LinkedIn post: ' + $('Normalize Case').first().json.title + ' (' + $('Normalize Case').first().json.cs_id + ')' }}",
+        "message": "={{ ('📝 Case study post draft (' + $('Normalize Case').first().json.cs_id + ')\\n\\n' + $('Parse Pack').first().json.final_post + ($('Parse Pack').first().json.warnings.length ? '\\n\\n⚠️ ' + $('Parse Pack').first().json.warnings.join('\\n⚠️ ') : '') + '\\n\\nApprove karne par post LinkedIn pe LIVE ho jayegi.').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\\n/g, '<br>') }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "✅ Post to LinkedIn",
+            "disapproveLabel": "❌ Reject"
+          }
+        },
+        "options": {}
+      },
+      "id": "feccbdd4-6f17-430d-b4b5-a202d77a3767",
+      "name": "Approval: Post",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        832
+      ],
+      "webhookId": "fe1c28b4-10ab-49a1-94ec-a349f40b9e7c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "38b52cbd-ed86-4caf-bed5-ab8f4bb6d4cf",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1f030f32-988c-40af-871b-6f53f204507a",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2672,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1994301605,
+          "mode": "list",
+          "cachedResultName": "Content_Queue",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1994301605"
+        },
+        "options": {}
+      },
+      "id": "809745ed-3190-4eae-83cd-d1fe734a2d74",
+      "name": "Read Content_Queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2944,
+        720
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Build Config').first().json.config;\nconst rows = $input.all().map(i => i.json).filter(r => r.id);\nconst tz = cfg.timezone || 'Asia/Karachi';\nconst today = new Date().toLocaleDateString('en-CA', { timeZone: tz });\nconst max = parseInt(cfg.max_posts_per_day || '1', 10) || 1;\nconst count = rows.filter(r => String(r.created_at || '').slice(0, 10) === today && r.status !== 'Rejected').length;\nreturn [{ json: { cap_reached: count >= max, today_count: count, max_per_day: max } }];"
+      },
+      "id": "7ea021e1-a9e4-4404-addf-fb776874e0c7",
+      "name": "Check Cap",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "bf158ed1-1749-4db8-93dd-72a8e8e33e63",
+              "leftValue": "={{ $json.cap_reached }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6a903ee4-4769-4036-a86e-d6dae349a7eb",
+      "name": "Cap Reached?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1272169577,
+          "mode": "list",
+          "cachedResultName": "Case_Studies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1272169577"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "cs_id",
+              "displayName": "cs_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permission",
+              "displayName": "permission",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "problem",
+              "displayName": "problem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "solution",
+              "displayName": "solution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tools",
+              "displayName": "tools",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "results",
+              "displayName": "results",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_post",
+              "displayName": "linkedin_post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "carousel_json",
+              "displayName": "carousel_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_title",
+              "displayName": "fiverr_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_description",
+              "displayName": "fiverr_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_tags",
+              "displayName": "fiverr_tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "warnings",
+              "displayName": "warnings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_ref",
+              "displayName": "linkedin_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "bbaf752d-c6b1-4018-91ec-515b47853dcc",
+      "name": "Mark Cap Hold",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1552,
+        1248
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=muhammadnoraiz547@gmail.com",
+        "subject": "Case study approved - daily cap hold",
+        "emailType": "text",
+        "message": "=⛔ Aaj ka post limit ({{ $('Check Cap').first().json.today_count }}/{{ $('Check Cap').first().json.max_per_day }}) poora hai, isliye abhi post nahi hui. Case_Studies sheet me status 'Approved - Cap Hold' hai. Kal khud post kar sakti ho ya Config me max_posts_per_day badha do.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ec5f38e7-c1ff-469d-9c4a-9556ee549d81",
+      "name": "Gmail: Cap Hold",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1824,
+        1248
+      ],
+      "webhookId": "670297e9-0c8c-4ef3-8863-40b68639d914",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "person": "kW6C4Lfvy8",
+        "text": "={{ $('Parse Pack').first().json.final_post }}",
+        "additionalFields": {}
+      },
+      "id": "3da3d089-d073-4ec5-ae77-16d034c66edf",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        1488
+      ],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "3SKsFfm0tyFEDADE",
+          "name": "LinkedIn account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1272169577,
+          "mode": "list",
+          "cachedResultName": "Case_Studies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1272169577"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cs_id": "={{ $('Normalize Case').first().json.cs_id }}",
+            "status": "Posted",
+            "approved_at": "={{ $now.setZone($('Build Config').first().json.config.timezone || 'Asia/Karachi').toFormat('yyyy-MM-dd') }}",
+            "posted_at": "={{ $now.setZone($('Build Config').first().json.config.timezone || 'Asia/Karachi').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "linkedin_ref": "={{ $json.urn || '' }}"
+          },
+          "matchingColumns": [
+            "cs_id"
+          ],
+          "schema": [
+            {
+              "id": "cs_id",
+              "displayName": "cs_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "linkedin_ref",
+              "displayName": "linkedin_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "e7a0b06f-4e65-4c5e-b654-4928c175bfa3",
+      "name": "Mark Posted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1808,
+        1488
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1994301605,
+          "mode": "list",
+          "cachedResultName": "Content_Queue",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1994301605"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ 'LI-' + Date.now() }}",
+            "created_at": "={{ $now.setZone($('Build Config').first().json.config.timezone || 'Asia/Karachi').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "topic": "={{ 'Case Study: ' + $('Normalize Case').first().json.title }}",
+            "hook": "={{ $('Parse Pack').first().json.hook }}",
+            "post_text": "={{ $('Parse Pack').first().json.final_post }}",
+            "hashtags": "={{ $('Parse Pack').first().json.hashtags }}",
+            "status": "Posted",
+            "approved_at": "={{ $now.setZone($('Build Config').first().json.config.timezone || 'Asia/Karachi').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "posted_at": "={{ $now.setZone($('Build Config').first().json.config.timezone || 'Asia/Karachi').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "linkedin_ref": "={{ $('Post to LinkedIn').first().json.urn || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "hook",
+              "displayName": "hook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "post_text",
+              "displayName": "post_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "hashtags",
+              "displayName": "hashtags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "linkedin_ref",
+              "displayName": "linkedin_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "5cd32743-cf99-4854-a04a-b579df50acbe",
+      "name": "Log to Content_Queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2096,
+        1488
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "✅ Case study LinkedIn pe post ho gayi",
+        "emailType": "text",
+        "message": "=✅ Case study LinkedIn pe post ho gayi!\nID: {{ $('Normalize Case').first().json.cs_id }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "4bf055a7-c393-4699-9740-49245e077fc9",
+      "name": "Gmail: Posted",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        1488
+      ],
+      "webhookId": "a6944eb7-6379-40e6-be45-061deb5e3d9a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1272169577,
+          "mode": "list",
+          "cachedResultName": "Case_Studies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1272169577"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "cs_id",
+              "displayName": "cs_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permission",
+              "displayName": "permission",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "problem",
+              "displayName": "problem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "solution",
+              "displayName": "solution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tools",
+              "displayName": "tools",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "results",
+              "displayName": "results",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_post",
+              "displayName": "linkedin_post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "carousel_json",
+              "displayName": "carousel_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_title",
+              "displayName": "fiverr_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_description",
+              "displayName": "fiverr_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fiverr_tags",
+              "displayName": "fiverr_tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "warnings",
+              "displayName": "warnings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_ref",
+              "displayName": "linkedin_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7eb5edea-73b7-4309-b368-2dcacd4325af",
+      "name": "Mark Rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2944,
+        944
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "❌ Case study post reject hui",
+        "emailType": "text",
+        "message": "=❌ Post reject ho gayi ({{ $('Normalize Case').first().json.cs_id }}). Fiverr text aur carousel outline Case_Studies sheet me saved hain.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "bb878fba-61aa-43b7-8a0d-90c8ba1cfcc8",
+      "name": "Gmail: Rejected",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3200,
+        944
+      ],
+      "webhookId": "9b2592d1-9732-4f57-8be7-d49e2a6f4bdc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "4b5a7904-bd89-46dd-b3ec-f053de0efd00",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        2944,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8b6836ad-bb4e-4cfb-b2da-3d70b335b09c",
+              "name": "sheet_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "21e00de6-d99f-4568-aaa0-5e2e104fc46f",
+              "name": "notify_email",
+              "value": "REPLACE_WITH_YOUR_GMAIL_ADDRESS",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "0b075b93-24ad-41b5-8f05-ea18b1f9d1a3",
+      "name": "Error Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3216,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE",
+          "mode": "list",
+          "cachedResultName": "case study linkedin",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1341230853,
+          "mode": "list",
+          "cachedResultName": "Error_Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MSbFak512Op9aY3XWuus4uVOnQJswnNtfdJ4Q4OwpmE/edit#gid=1341230853"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "time": "={{ $now.setZone('Asia/Karachi').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "workflow": "={{ $('Error Trigger').first().json.workflow.name }}",
+            "node": "={{ $('Error Trigger').first().json.execution.lastNodeExecuted }}",
+            "message": "={{ $('Error Trigger').first().json.execution.error.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsed": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "9563d3c6-9a6f-425c-ac42-dd5a3d422a28",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3488,
+        1360
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JcVASdaSgOHQwIHM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "🚨 Workflow error: Day 4 Case Study",
+        "emailType": "text",
+        "message": "=🚨 Workflow error\nNode: {{ $('Error Trigger').first().json.execution.lastNodeExecuted }}\n{{ $('Error Trigger').first().json.execution.error.message }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "32b5c65e-c393-4f38-929a-34288f919dbd",
+      "name": "Gmail: Error Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3760,
+        1360
+      ],
+      "webhookId": "e38b2eaf-9013-4c01-bcfc-e255e1c312f6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PByDgrtuogAALk0o",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger: Case Study Form": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Config": {
+      "main": [
+        [
+          {
+            "node": "Build Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Case": {
+      "main": [
+        [
+          {
+            "node": "Can Generate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Generate?": {
+      "main": [
+        [
+          {
+            "node": "Structure AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail: Not Generated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Structure": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structure AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structure AI": {
+      "main": [
+        [
+          {
+            "node": "Parse Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Structure": {
+      "main": [
+        [
+          {
+            "node": "Content Pack AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Content": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Content Pack AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Pack AI": {
+      "main": [
+        [
+          {
+            "node": "Parse Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Pack": {
+      "main": [
+        [
+          {
+            "node": "Log Case Study",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Case Study": {
+      "main": [
+        [
+          {
+            "node": "Build Pack Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Pack Msg": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Content Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Content Pack": {
+      "main": [
+        [
+          {
+            "node": "Approval: Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval: Post": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Read Content_Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Content_Queue": {
+      "main": [
+        [
+          {
+            "node": "Check Cap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Cap": {
+      "main": [
+        [
+          {
+            "node": "Cap Reached?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cap Reached?": {
+      "main": [
+        [
+          {
+            "node": "Mark Cap Hold",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Cap Hold": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Cap Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Mark Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Posted": {
+      "main": [
+        [
+          {
+            "node": "Log to Content_Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Content_Queue": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Rejected": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Error Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Settings": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1fd7f5b0-a488-4c7e-aa4e-15d4bd1e815e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "181c9f56cce69f302f4046d379363176ff9966f1b567cbc365152891f1a8dbb6"
+  },
+  "nodeGroups": [],
+  "id": "E6IPaMeOX35L7jaF",
+  "tags": []
+}

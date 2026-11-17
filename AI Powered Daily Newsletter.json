@@ -1,0 +1,437 @@
+{
+  "name": "AI Powered Daily Newsletter",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "0d0bb56c-9171-4e15-8888-8a8d7d370b12",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        736,
+        544
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"Url\": [\n    \"https://news.google.com/rss/search?q=pakistan+startup&hl=en-PK&gl=PK&ceid=PK:en\",\n    \"https://news.google.com/rss/search?q=pakistan+cricket&hl=en-PK&gl=PK&ceid=PK:en\",\n    \"https://news.google.com/rss/search?q=imran+khan&hl=en-PK&gl=PK&ceid=PK:en\",\n    \"https://news.google.com/rss/search?q=pakistan+news+today&hl=en-PK&gl=PK&ceid=PK:en\"\n  ]\n}",
+        "options": {}
+      },
+      "id": "7c43e97c-7cb5-4335-bc81-8baf5e90bb13",
+      "name": "Tech News Sites1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1168,
+        352
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"Url\": [\n    \"https://news.google.com/rss/search?q=pakistan&hl=en-PK&gl=PK&ceid=PK:en\",\n    \"https://news.google.com/rss/search?q=pakistan+business&hl=en-PK&gl=PK&ceid=PK:en\",\n    \"https://news.google.com/rss/search?q=pakistan+technology&hl=en-PK&gl=PK&ceid=PK:en\",\n    \"https://news.google.com/rss/search?q=pakistan+economy&hl=en-PK&gl=PK&ceid=PK:en\"\n  ]\n}",
+        "options": {}
+      },
+      "id": "1c95e011-5b09-4bb7-961d-35e5f56c519b",
+      "name": "Tools Subredit and Sites1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1168,
+        512
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "url",
+        "options": {}
+      },
+      "id": "988e8e59-62d8-4e8e-a134-2bd226396f48",
+      "name": "Split Out2",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        1472,
+        352
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "Url",
+        "options": {}
+      },
+      "id": "994630c6-2dc2-4687-8f79-b45111598114",
+      "name": "Split Out3",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        1472,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "d40f5e39-8b1a-40b9-8ccb-5a9775f62b99",
+      "name": "Loop Over Items2",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        1664,
+        320
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "batchSize": 4,
+        "options": {}
+      },
+      "id": "57736dde-964c-4801-ba21-c38d2b30b78c",
+      "name": "Loop Over Items3",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        1664,
+        512
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Split Out2').item.json.url }}",
+        "options": {}
+      },
+      "id": "a721df1b-4410-49f9-809f-83b4d95a4e69",
+      "name": "RSS Read OF Tech News1",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "position": [
+        1888,
+        336
+      ],
+      "typeVersion": 1.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Url }}",
+        "options": {}
+      },
+      "id": "686a66be-0e8f-4975-bc4e-49259929fd0a",
+      "name": "RSS Read OF Tools1",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "position": [
+        1888,
+        528
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "00baa9b5-dbd8-4f88-81ad-2201c3fad252",
+      "name": "Merge Both List1",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        2368,
+        416
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a78e5e26-1a64-4d00-8a42-287c51113143",
+      "name": "Conver To CSV1",
+      "type": "n8n-nodes-base.convertToFile",
+      "position": [
+        2544,
+        416
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "inputType": "binary"
+      },
+      "id": "096a14d4-eb07-4115-aa39-50a3e55ee5ee",
+      "name": "Upload a file1",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "position": [
+        2848,
+        416
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RpZVKnSAq8As9NMB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash-lite"
+        },
+        "text": "# Tech Content Writer Prompt\n\nYou are a tech content writer.\nI have two lists of items:\n1️⃣ New Tools & Products\n{products_list}\n2️⃣ Global & India Tech News\n{news_list}\n\n## Task:\n- Select the **top 10-15 items** from each list based on these interests and keywords:\n  - **Tools & Products Keywords:** [\"AI\", \"automation\", \"developer\", \"open source\", \"productivity\", \"creative\", \"innovation\", \"API\", \"web app\", \"tools\"]\n  - **News Keywords:** [\"technology innovation\", \"AI breakthrough\", \"framework\", \"developer update\", \"research\", \"automation trend\", \"product launch\"]\n- Keep **two separate sections**: \n  1. Tools & Products (10-15 items)\n  2. Global & India Tech Innovations (10-15 items)\n- Summarize each item in **2-3 lines**.\n- **If an image URL is provided**, display it beautifully under the title with rounded edges\n- Tone: \"Curious, energetic, and concise – focused on discovery, usefulness, and creativity.\"\n- Format using the HTML template below, replacing placeholder items with actual content from the lists.\n\n## HTML Template:\n```html\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Daily Tech Digest</title>\n    <style>\n        body {\n            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;\n            background: #f5f5f5;\n            margin: 0;\n            padding: 16px;\n            line-height: 1.5;\n            font-size: 15px;\n            color: #333;\n        }\n        \n        .container {\n            max-width: 600px;\n            margin: 0 auto;\n            background: #ffffff;\n            border-radius: 8px;\n        }\n        \n        .header {\n            background: #000;\n            color: #fff;\n            padding: 20px 16px;\n            border-radius: 8px 8px 0 0;\n        }\n        \n        .header h1 {\n            font-size: 20px;\n            font-weight: 600;\n            margin: 0 0 4px 0;\n        }\n        \n        .header p {\n            font-size: 13px;\n            margin: 0;\n            opacity: 0.8;\n        }\n        \n        .content {\n            padding: 20px 16px;\n        }\n        \n        .section {\n            margin-bottom: 32px;\n        }\n        \n        .section:last-child {\n            margin-bottom: 0;\n        }\n        \n        .section-title {\n            font-size: 16px;\n            font-weight: 600;\n            color: #000;\n            margin: 0 0 16px 0;\n            padding-bottom: 8px;\n            border-bottom: 2px solid #000;\n        }\n        \n        .item {\n            margin-bottom: 20px;\n            padding-bottom: 20px;\n            border-bottom: 1px solid #e5e5e5;\n        }\n        \n        .item:last-child {\n            border-bottom: none;\n            margin-bottom: 0;\n            padding-bottom: 0;\n        }\n        \n        .item-title {\n            font-size: 15px;\n            font-weight: 600;\n            color: #000;\n            margin: 0 0 12px 0;\n        }\n        \n        .item-image {\n            width: 100%;\n            height: auto;\n            border-radius: 12px;\n            margin-bottom: 12px;\n            display: block;\n            object-fit: cover;\n        }\n        \n        .item-summary {\n            font-size: 14px;\n            color: #555;\n            margin: 0 0 8px 0;\n        }\n        \n        .item-link {\n            color: #0066cc;\n            text-decoration: none;\n            font-size: 14px;\n            font-weight: 500;\n        }\n        \n        .footer {\n            background: #f9f9f9;\n            padding: 16px;\n            text-align: center;\n            font-size: 12px;\n            color: #666;\n            border-radius: 0 0 8px 8px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>⚡ Daily Tech Digest</h1>\n            <p>{current_date}</p>\n        </div>\n        \n        <div class=\"content\">\n            <!-- Tools & Products Section -->\n            <div class=\"section\">\n                <h2 class=\"section-title\">🧠 New Tools & Products</h2>\n                \n                <!-- Example with Image -->\n                <div class=\"item\">\n                    <div class=\"item-title\">{Product Title 1}</div>\n                    <!-- Include image if URL is available -->\n                    <img src=\"{image_url}\" alt=\"{Product Title}\" class=\"item-image\" onerror=\"this.style.display='none'\">\n                    <div class=\"item-summary\">\n                        {2-3 line summary of the product}\n                    </div>\n                    <a href=\"{product_link}\" class=\"item-link\">Learn more →</a>\n                </div>\n                \n                <!-- Example without Image -->\n                <div class=\"item\">\n                    <div class=\"item-title\">{Product Title 2}</div>\n                    <div class=\"item-summary\">\n                        {2-3 line summary of the product}\n                    </div>\n                    <a href=\"{product_link}\" class=\"item-link\">Learn more →</a>\n                </div>\n                \n                <!-- Add more items as needed -->\n            </div>\n            \n            <!-- Global & India Tech News Section -->\n            <div class=\"section\">\n                <h2 class=\"section-title\">🌍 Global & India Tech Innovations</h2>\n                \n                <!-- Example with Image -->\n                <div class=\"item\">\n                    <div class=\"item-title\">{News Title 1}</div>\n                    <!-- Include image if URL is available -->\n                    <img src=\"{image_url}\" alt=\"{News Title}\" class=\"item-image\" onerror=\"this.style.display='none'\">\n                    <div class=\"item-summary\">\n                        {2-3 line summary of the news}\n                    </div>\n                    <a href=\"{news_link}\" class=\"item-link\">Read more →</a>\n                </div>\n                \n                <!-- Example without Image -->\n                <div class=\"item\">\n                    <div class=\"item-title\">{News Title 2}</div>\n                    <div class=\"item-summary\">\n                        {2-3 line summary of the news}\n                    </div>\n                    <a href=\"{news_link}\" class=\"item-link\">Read more →</a>\n                </div>\n                \n                <!-- Add more items as needed -->\n            </div>\n        </div>\n        \n        <div class=\"footer\">\n            Stay curious. Keep building.\n        </div>\n    </div>\n</body>\n</html>\n```",
+        "documentUrls": "={{ $json.fileUri }}",
+        "options": {}
+      },
+      "id": "98aa86c4-1ebe-469d-b1d4-f24a8c185ad6",
+      "name": "Analyze document1",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "position": [
+        3088,
+        416
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RpZVKnSAq8As9NMB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini ne already HTML bana diya hai\nlet rawText = $input.first().json.content.parts[0].text;\n\n// Backticks hata do agar hain (```html ... ```)\nrawText = rawText.replace(/```html/g, \"\").replace(/```/g, \"\").trim();\n\nconst today = new Date().toLocaleDateString(\"en-PK\", {\n  weekday: \"long\", year: \"numeric\", month: \"long\", day: \"numeric\"\n});\n\nreturn [{ json: { \n  html: rawText, \n  subject: `⚡ Daily Tech Digest — ${today}` \n} }];"
+      },
+      "id": "5b9da519-e34b-40be-8b13-7f0f26031cab",
+      "name": "Code in JavaScript1",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        3376,
+        416
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "fromEmail": "user@example.com",
+        "toEmail": "muhammadnoraiz547@gmail.com",
+        "subject": "=⚡ Daily Tech Digest - {{ new Date().toLocaleDateString(\"en-US\", { year: \"numeric\", month: \"long\", day: \"numeric\" }) }}\n",
+        "html": "={{ $json.html.replace(/^```html/, '').replace(/```$/, '').trim() }}\n",
+        "options": {}
+      },
+      "id": "1f8ebaef-3501-4a33-bcae-1a627a4cceb8",
+      "name": "Send email1",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [
+        3664,
+        416
+      ],
+      "webhookId": "9c1d2a26-ab49-44a3-aea5-f13cc14ebf64",
+      "typeVersion": 2.1,
+      "credentials": {
+        "smtp": {
+          "id": "o5dWAqRKcgKgpfRg",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Tech News Sites1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Tools Subredit and Sites1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tech News Sites1": {
+      "main": [
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tools Subredit and Sites1": {
+      "main": [
+        [
+          {
+            "node": "Split Out3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out3": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items2": {
+      "main": [
+        [
+          {
+            "node": "Merge Both List1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RSS Read OF Tech News1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items3": {
+      "main": [
+        [
+          {
+            "node": "Merge Both List1",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "RSS Read OF Tools1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read OF Tech News1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read OF Tools1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Both List1": {
+      "main": [
+        [
+          {
+            "node": "Conver To CSV1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conver To CSV1": {
+      "main": [
+        [
+          {
+            "node": "Upload a file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload a file1": {
+      "main": [
+        [
+          {
+            "node": "Analyze document1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze document1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "12f77325-13dd-47a7-b1df-c2bab277225f",
+  "meta": {
+    "templateId": "10196",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e221715c354c7738c4e9b3fd2168dea278503b676a0bf5d95f2cc5a823eb7cb6"
+  },
+  "id": "XQhLZYNU4KOoRhJg",
+  "tags": []
+}

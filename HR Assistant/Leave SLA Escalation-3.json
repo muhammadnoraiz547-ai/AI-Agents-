@@ -1,0 +1,541 @@
+{
+  "name": "Leave SLA Escalation-3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "d40d643c-d826-4a34-9f20-d08c41ecbdc9",
+      "name": "Schedule Trigger - Hourly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1971707973,
+          "mode": "list",
+          "cachedResultName": "Approvals",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1971707973"
+        },
+        "options": {}
+      },
+      "id": "bcb61c43-d452-4a95-995d-54fe4afddea6",
+      "name": "Fetch All Approvals",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1696,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst row = $json;\nif (row.status !== 'Pending') return null;\nif (String(row.escalated).toLowerCase() === 'true') return null;\nconst created = new Date(row.created_at);\nif (isNaN(created.getTime())) return null;\nconst ageHours = (Date.now() - created.getTime()) / 3600000;\nif (ageHours < 24) return null;\nreturn { ...row, age_hours: Math.round(ageHours * 10) / 10 };\n"
+      },
+      "id": "e877bc69-e687-4cbb-b834-f37beb6284bf",
+      "name": "Filter Pending Overdue Approvals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "108f54a7-e4fc-490e-81a5-981b909e2589",
+              "leftValue": "={{$json.approval_id}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c940a763-4d44-4ad7-b8b1-46d470ffc75a",
+      "name": "Needs Escalation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1264,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fac7927e-0fc5-4d70-a335-bdf4a70bb23b",
+      "name": "No Escalation Needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 327671811,
+          "mode": "list",
+          "cachedResultName": "Leave_Requests",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=327671811"
+        },
+        "options": {}
+      },
+      "id": "d240ee7d-0834-4b63-94e3-f8c78647467e",
+      "name": "Find Leave Request For Escalation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1040,
+        -112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst approvals = $('Needs Escalation?').all().map(i => i.json);\nconst requests = $input.all().map(i => i.json);\nreturn approvals.map(approval => {\n  const req = requests.find(r => r.request_id === approval.request_id);\n  return { json: { ...approval, ...(req || {}) } };\n});\n"
+      },
+      "id": "f6e9c836-b9b7-4cab-812b-cbfe1b5a0320",
+      "name": "Match Request To Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 541436557,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=541436557"
+        },
+        "options": {}
+      },
+      "id": "dda6ae36-51f9-4902-87cd-98c757d3dfee",
+      "name": "Find Manager For Escalation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -608,
+        -112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst contexts = $('Match Request To Approval').all().map(i => i.json);\nconst managers = $input.all().map(i => i.json);\nreturn contexts.map(ctx => {\n  const mgr = managers.find(e => e.employee_id === ctx.manager_id);\n  return { json: { ...ctx, manager_telegram_id: mgr ? mgr.telegram_id : '', manager_name: mgr ? mgr.name : 'Manager' } };\n});\n"
+      },
+      "id": "462f6434-4361-453d-b001-e6e12f445916",
+      "name": "Resolve Manager Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.manager_telegram_id}}",
+        "text": "=⏰ *Reminder: Leave Approval Overdue*\\n\\nRequest {{$json.request_id}} has been pending for {{$json.age_hours}} hours. Please review and respond.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "bc50fefa-54f0-449c-99ee-3716f31e15b3",
+      "name": "Notify Manager Escalation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -192
+      ],
+      "webhookId": "6d835597-2779-4935-a0ec-472bc1f9cf87",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "PLACEHOLDER_HR_ADMIN_CHAT_ID",
+        "text": "=🚨 *SLA Escalation*\\n\\nLeave request {{$('Resolve Manager Contact').item.json.request_id}} (employee {{$('Resolve Manager Contact').item.json.employee_id}}) has exceeded the 24-hour manager approval SLA ({{$('Resolve Manager Contact').item.json.age_hours}}h). Manager: {{$('Resolve Manager Contact').item.json.manager_name}}.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "ae697be7-583b-4d94-9b37-5fc4e431343e",
+      "name": "Notify HR Admin Escalation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -32
+      ],
+      "webhookId": "975ed4aa-435e-4b8c-b167-13456cf09522",
+      "credentials": {
+        "telegramApi": {
+          "id": "f12GZUnUuuVH5ocu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1971707973,
+          "mode": "list",
+          "cachedResultName": "Approvals",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1971707973"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "approval_id": "={{$('Resolve Manager Contact').item.json.approval_id}}",
+            "escalated": "true",
+            "escalated_at": "={{new Date().toISOString()}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "approval_id"
+          ],
+          "schema": [
+            {
+              "id": "approval_id",
+              "displayName": "approval_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "manager_id",
+              "displayName": "manager_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "rejected_at",
+              "displayName": "rejected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "escalated",
+              "displayName": "escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "escalated_at",
+              "displayName": "escalated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "33d96a6e-0dba-4018-8af9-aa82ff960f30",
+      "name": "Mark Approval Escalated",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        64,
+        -112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger - Hourly": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Approvals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Approvals": {
+      "main": [
+        [
+          {
+            "node": "Filter Pending Overdue Approvals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Pending Overdue Approvals": {
+      "main": [
+        [
+          {
+            "node": "Needs Escalation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Escalation?": {
+      "main": [
+        [
+          {
+            "node": "Find Leave Request For Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Escalation Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Leave Request For Escalation": {
+      "main": [
+        [
+          {
+            "node": "Match Request To Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Request To Approval": {
+      "main": [
+        [
+          {
+            "node": "Find Manager For Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Manager For Escalation": {
+      "main": [
+        [
+          {
+            "node": "Resolve Manager Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Manager Contact": {
+      "main": [
+        [
+          {
+            "node": "Notify Manager Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Manager Escalation": {
+      "main": [
+        [
+          {
+            "node": "Notify HR Admin Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify HR Admin Escalation": {
+      "main": [
+        [
+          {
+            "node": "Mark Approval Escalated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "41166cc9-8851-4747-8dbc-dd9ac093554c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f117c48b5ac7fa56eb21cf2c3e07d3d95eb84ac376ecaefe63935a1d0499838"
+  },
+  "nodeGroups": [],
+  "id": "61CmuMEwuz1wRVoQ",
+  "tags": []
+}

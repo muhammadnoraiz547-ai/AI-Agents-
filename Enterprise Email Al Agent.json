@@ -1,0 +1,1135 @@
+{
+  "name": "Enterprise Email Al Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "maxResults": 5,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -2304,
+        -496
+      ],
+      "id": "d56bfa9f-52cc-431d-a57b-7d308859a381",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "=Email Subject: {{ $json['emailSubject  '] }}\nFrom:   {{ $json.senderEmail }}\nContent: {{ $json.emailBody }}\n\nClassify this email into: Work, Business, Personal, or Others",
+        "categories": {
+          "categories": [
+            {
+              "category": "Work",
+              "description": "Emails related to job, workplace tasks, meetings, project updates, team communication, manager requests, work deadlines, office announcements, and professional workplace matters"
+            },
+            {
+              "category": "Buisness",
+              "description": "Emails about sales inquiries, client proposals, vendor communications, partnership opportunities, business deals, invoices, contracts, B2B communications, and entrepreneurial matters"
+            },
+            {
+              "category": "Personal ",
+              "description": "Emails from friends, family members, personal contacts, casual conversations, social invitations, personal appointments, and non-work related communications"
+            },
+            {
+              "category": "Others",
+              "description": "Newsletters, marketing emails, promotional content, spam, automated notifications, subscriptions, unclear emails, and anything that doesn't fit Work, Business, or Personal categories"
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "You are an email classification assistant. Classify emails into exactly one category: Work, Business, Personal, or Others.\n\n- Work: Job-related emails, tasks, meetings, workplace communication\n- Business: Sales inquiries, partnerships, proposals, vendors\n- Personal: Friends, family, casual conversations\n- Others: Newsletters, promotions, spam, unclear emails\n\nReturn only the category name."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        -1888,
+        -528
+      ],
+      "id": "84bfb137-3dcd-41af-a023-50586358f7fe",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "68142236-037e-4283-8300-2fc66159f312",
+              "name": "emailBody",
+              "value": "={{ $json.snippet }}",
+              "type": "string"
+            },
+            {
+              "id": "7fb77c50-4935-42ae-99df-7c16f3901c4f",
+              "name": "emailSubject  ",
+              "value": "={{ $json.Subject }}",
+              "type": "string"
+            },
+            {
+              "id": "c143948d-b54f-4c9e-98a3-f502106d7c8d",
+              "name": "senderEmail",
+              "value": "={{ $json.From }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2096,
+        -496
+      ],
+      "id": "d846c720-c8f0-4d6a-9c62-86e5ad469e7e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-6",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.4,
+      "position": [
+        -1888,
+        -224
+      ],
+      "id": "66d166e0-2e19-439f-9a69-431974131a7a",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_1573541191868606583"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        144
+      ],
+      "id": "1e6ec3d5-ade3-4c41-8430-667c93cb7b6d",
+      "name": "Add label to thread3",
+      "webhookId": "c3c61664-1fa0-4c85-b492-0abd1ffb8b16",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_2074421881886944478"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1280,
+        -608
+      ],
+      "id": "5ae48920-6a75-47e7-bacc-f5dd7b4c59dd",
+      "name": "Add label to Buisness",
+      "webhookId": "c3c61664-1fa0-4c85-b492-0abd1ffb8b16",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_7935932119064956564"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1280,
+        -992
+      ],
+      "id": "de679d4a-7845-44b7-a220-b8d7c2c5230b",
+      "name": "Add label to Work",
+      "webhookId": "c3c61664-1fa0-4c85-b492-0abd1ffb8b16",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_8874346354696397776"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        -224
+      ],
+      "id": "eb809bb9-1059-48b3-93bf-cb3e54f73032",
+      "name": "Add label to Personal",
+      "webhookId": "c3c61664-1fa0-4c85-b492-0abd1ffb8b16",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        -992
+      ],
+      "id": "12795a12-400d-4a46-9346-4db7c02bed40",
+      "name": "Mark a message as read",
+      "webhookId": "633d037a-7ed0-427f-bdc2-d7ae60270435",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        -608
+      ],
+      "id": "80303a6a-623b-444c-881b-62f1914a1111",
+      "name": "Mark a message as read1",
+      "webhookId": "633d037a-7ed0-427f-bdc2-d7ae60270435",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1056,
+        -224
+      ],
+      "id": "ed4e593a-dde1-42d9-979e-9bcdabeb437f",
+      "name": "Mark a message as read2",
+      "webhookId": "633d037a-7ed0-427f-bdc2-d7ae60270435",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1056,
+        144
+      ],
+      "id": "c2784513-0e63-48de-ba75-db105a70f6c8",
+      "name": "Mark a message as read3",
+      "webhookId": "633d037a-7ed0-427f-bdc2-d7ae60270435",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are a professional workplace email assistant. Your role is to help manage work-related emails efficiently.\n\nCONTEXT:\n- You handle emails related to jobs, tasks, meetings, projects, and workplace communication\n- Respond professionally and concisely\n- Maintain formal tone appropriate for workplace\n\nINSTRUCTIONS:\n1. Analyze the email content and sender\n2. Determine if it requires a response\n3. If response needed:\n   - Draft a professional reply\n   - Keep it brief and action-oriented\n   - Include relevant details from the original email\n4. If it's just informational (announcements, updates):\n   - Acknowledge receipt\n   - Confirm understanding\n\nRESPONSE FORMAT:\nGenerate a professional email reply that:\n- Starts with appropriate greeting\n- Addresses the main points\n- Provides clear next steps if needed\n- Ends with professional closing\n\nEMAIL DETAILS:\nSubject: {{ $('Gmail Trigger').first().json.subject }}\nFrom: {{ $('Gmail Trigger').first().json.from }}\nContent: {{ $('Gmail Trigger').first().json.snippet }}\n\nDraft an appropriate response."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -768,
+        -992
+      ],
+      "id": "859ac1a5-590c-4aae-979b-5bfaa08a02e8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -768,
+        -800
+      ],
+      "id": "ad496dab-1469-4ffc-b96f-c9b22f0e7dbe",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"The email reply text\"\n    },\n    \"action\": {\n      \"type\": \"string\",\n      \"enum\": [\"send_reply\", \"archive\", \"flag_important\"],\n      \"description\": \"Recommended action\"\n    },\n    \"priority\": {\n      \"type\": \"string\",\n      \"enum\": [\"high\", \"medium\", \"low\"],\n      \"description\": \"Email priority level\"\n    },\n    \"requires_followup\": {\n      \"type\": \"boolean\",\n      \"description\": \"Does this need follow-up?\"\n    }\n  },\n  \"required\": [\"reply\", \"action\", \"priority\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -624,
+        -800
+      ],
+      "id": "2aab1912-ce96-4507-8b0e-b6ff2b7998c6",
+      "name": "Code Tool"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=EMAIL RECEIVED:\n━━━━━━━━━━━━━━━━━━━━\nSubject:  {{ $('Gmail Trigger').item.json.Subject }}\nFrom: {{ $('Gmail Trigger').item.json.From }}\nCategory: Buisness\n━━━━━━━━━━━━━━━━━━━━\n\nCONTENT:\n{{ $('Gmail Trigger').first().json.snippet }}\n\n━━━━━━━━━━━━━━━━━━━━\n\nTASK:\nDraft a professional workplace email response that:\n1. Addresses all points raised in the email\n2. Maintains formal, professional tone\n3. Provides clear next steps if needed\n4. Keeps response concise (2-3 paragraphs max)\n\nGenerate the reply.",
+        "options": {
+          "systemMessage": "=You are a business development email assistant specializing in client communication, sales, and partnerships.\n\nCONTEXT:\n- Handle emails about sales inquiries, client proposals, vendor communications, partnerships\n- Maintain professional yet friendly tone\n- Focus on building relationships and closing deals\n\nINSTRUCTIONS:\n1. Identify the business opportunity or inquiry\n2. Assess client/vendor intent and urgency\n3. Draft responses that:\n   - Show enthusiasm and interest\n   - Address specific questions or concerns\n   - Suggest clear next steps (meeting, call, proposal)\n   - Include call-to-action\n\nRESPONSE STYLE:\n- Professional but warm\n- Solution-oriented\n- Include specific details (pricing, timeline, deliverables)\n- Always end with clear next step\n\nEMAIL DETAILS:\nSubject: {{ $('Gmail Trigger').first().json.subject }}\nFrom: {{ $('Gmail Trigger').first().json.from }}\nContent: {{ $('Gmail Trigger').first().json.snippet }}\n\nDraft a business-appropriate response that moves the conversation forward."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -784,
+        -608
+      ],
+      "id": "22faf6c0-f3aa-48e4-8f23-953d40d54beb",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"Business email reply\"\n    },\n    \"lead_quality\": {\n      \"type\": \"string\",\n      \"enum\": [\"hot\", \"warm\", \"cold\"],\n      \"description\": \"Lead temperature\"\n    },\n    \"action\": {\n      \"type\": \"string\",\n      \"enum\": [\"schedule_meeting\", \"send_proposal\", \"send_pricing\", \"archive\"],\n      \"description\": \"Recommended next action\"\n    },\n    \"estimated_value\": {\n      \"type\": \"string\",\n      \"description\": \"Potential deal value if mentioned\"\n    }\n  },\n  \"required\": [\"reply\", \"lead_quality\", \"action\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -640,
+        -416
+      ],
+      "id": "1ba3dd31-e427-4778-9414-13b34de60977",
+      "name": "Code Tool1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        -432
+      ],
+      "id": "3ed3b993-7873-440e-a358-aa10a8c294f6",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=EMAIL RECEIVED:\n━━━━━━━━━━━━━━━━━━━━\nSubject:  {{ $('Gmail Trigger').item.json.Subject }}\nFrom: {{ $('Gmail Trigger').item.json.From }}\nCategory: Personal\n━━━━━━━━━━━━━━━━━━━━\n\nCONTENT:\n{{ $('Gmail Trigger').first().json.snippet }}\n\n━━━━━━━━━━━━━━━━━━━━\n\nTASK:\nDraft a professional workplace email response that:\n1. Addresses all points raised in the email\n2. Maintains formal, professional tone\n3. Provides clear next steps if needed\n4. Keeps response concise (2-3 paragraphs max)\n\nGenerate the reply.",
+        "options": {
+          "systemMessage": "=You are a friendly personal email assistant for casual and social communications.\n\nCONTEXT:\n- Handle emails from friends, family, and personal contacts\n- Maintain warm, casual, and friendly tone\n- Focus on maintaining relationships\n\nINSTRUCTIONS:\n1. Understand the personal context and relationship\n2. Respond naturally and warmly\n3. Match the sender's tone (casual, friendly, informal)\n4. Show genuine interest and care\n\nRESPONSE STYLE:\n- Friendly and conversational\n- Use casual language (not overly formal)\n- Add personal touches\n- Keep it brief unless the email requires detailed response\n\nEMAIL DETAILS:\nSubject: {{ $('Gmail Trigger').first().json.subject }}\nFrom: {{ $('Gmail Trigger').first().json.from }}\nContent: {{ $('Gmail Trigger').first().json.snippet }}\n\nDraft a friendly, personal response."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -800,
+        -224
+      ],
+      "id": "203f0bb4-3288-47e9-ba5a-61d4e50b7672",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -800,
+        -16
+      ],
+      "id": "9d538baf-f926-4c1c-ac40-60177d16d5d8",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"Friendly email reply\"\n    },\n    \"tone\": {\n      \"type\": \"string\",\n      \"enum\": [\"casual\", \"warm\", \"humorous\", \"supportive\"],\n      \"description\": \"Reply tone\"\n    },\n    \"action\": {\n      \"type\": \"string\",\n      \"enum\": [\"send_reply\", \"remind_later\", \"archive\"],\n      \"description\": \"Action to take\"\n    }\n  },\n  \"required\": [\"reply\", \"tone\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        0
+      ],
+      "id": "1889e22a-3604-49d8-8df2-4afc967eb512",
+      "name": "Code Tool2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=EMAIL RECEIVED:\n━━━━━━━━━━━━━━━━━━━━\nSubject:  {{ $('Gmail Trigger').item.json.Subject }}\nFrom:  {{ $('Gmail Trigger').item.json.From }}\nCategory: Others\n━━━━━━━━━━━━━━━━━━━━\n\nCONTENT:\n{{ $('Gmail Trigger').first().json.snippet }}\n\n━━━━━━━━━━━━━━━━━━━━\n\nTASK:\n1. Identify email type: newsletter, promotion, automated notification, or spam\n2. Extract key information if valuable (discounts, important updates, deadlines)\n3. Recommend action: archive, unsubscribe, mark as spam, or reply\n4. If reply needed, draft a brief response\n\nProvide your analysis.",
+        "options": {
+          "systemMessage": "=You are an email triage assistant for newsletters, promotions, and miscellaneous emails.\n\nCONTEXT:\n- Handle newsletters, marketing emails, automated notifications, spam\n- Most emails here don't need replies\n- Focus on extraction of useful information\n\nINSTRUCTIONS:\n1. Identify email type (newsletter, promotion, notification, spam)\n2. Extract key information if valuable:\n   - Special offers or discounts\n   - Important updates or announcements\n   - Subscription confirmations\n3. For most emails: recommend archiving or unsubscribing\n4. Only draft reply if absolutely necessary\n\nRESPONSE LOGIC:\n- Newsletters → Extract summary, archive\n- Promotions → Note discount/offer, archive\n- Notifications → Acknowledge, archive\n- Spam → Mark as spam\n- Important automated emails → Draft confirmation if needed\n\nEMAIL DETAILS:\nSubject: {{ $('Gmail Trigger').first().json.subject }}\nFrom: {{ $('Gmail Trigger').first().json.from }}\nContent: {{ $('Gmail Trigger').first().json.snippet }}\n\nAnalyze and provide recommendation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -800,
+        144
+      ],
+      "id": "7511b0f2-55a7-4523-b894-276aff35a997",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -800,
+        304
+      ],
+      "id": "0ec492b9-d888-4c92-8419-692c170c5837",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"email_type\": {\n      \"type\": \"string\",\n      \"enum\": [\"newsletter\", \"promotion\", \"notification\", \"spam\", \"other\"],\n      \"description\": \"Type of email\"\n    },\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"Brief summary of email content\"\n    },\n    \"action\": {\n      \"type\": \"string\",\n      \"enum\": [\"archive\", \"unsubscribe\", \"mark_spam\", \"reply\"],\n      \"description\": \"Recommended action\"\n    },\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"Reply text if action is 'reply'\"\n    },\n    \"has_value\": {\n      \"type\": \"boolean\",\n      \"description\": \"Does this email have any value?\"\n    }\n  },\n  \"required\": [\"email_type\", \"summary\", \"action\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        352
+      ],
+      "id": "13fd4daa-3b35-4612-9392-442211c48a0e",
+      "name": "Code Tool3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8c40141-7843-4f1c-9843-f086381ee00a",
+              "name": "replyMessage",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "67dd474a-e8a7-4baf-8e9c-dcc6ef36f506",
+              "name": "emailId",
+              "value": "={{ $('Gmail Trigger').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c584a633-1e9e-4f24-bfd7-475552555c8b",
+              "name": "threadId",
+              "value": "={{ $('Gmail Trigger').first().json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "314c4359-9e2c-4413-8b5d-b5ea8303deda",
+              "name": "recipientEmail",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "c58ae5c6-cc10-44da-ab0c-2d4f8a4f8e20",
+              "name": "originalSubject",
+              "value": "=\n{{ $('Gmail Trigger').item.json.Subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -416,
+        -992
+      ],
+      "id": "080606b0-2ff7-4e8b-ac14-dc4e1a6546d4",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8c40141-7843-4f1c-9843-f086381ee00a",
+              "name": "replyMessage",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "67dd474a-e8a7-4baf-8e9c-dcc6ef36f506",
+              "name": "emailId",
+              "value": "={{ $('Gmail Trigger').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c584a633-1e9e-4f24-bfd7-475552555c8b",
+              "name": "threadId",
+              "value": "={{ $('Gmail Trigger').first().json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "314c4359-9e2c-4413-8b5d-b5ea8303deda",
+              "name": "recipientEmail",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "c58ae5c6-cc10-44da-ab0c-2d4f8a4f8e20",
+              "name": "originalSubject",
+              "value": "=\n{{ $('Gmail Trigger').item.json.Subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -432,
+        -608
+      ],
+      "id": "3a48cdd9-beca-4a80-919b-d4009d37fb84",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8c40141-7843-4f1c-9843-f086381ee00a",
+              "name": "replyMessage",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "67dd474a-e8a7-4baf-8e9c-dcc6ef36f506",
+              "name": "emailId",
+              "value": "={{ $('Gmail Trigger').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c584a633-1e9e-4f24-bfd7-475552555c8b",
+              "name": "threadId",
+              "value": "={{ $('Gmail Trigger').first().json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "314c4359-9e2c-4413-8b5d-b5ea8303deda",
+              "name": "recipientEmail",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "c58ae5c6-cc10-44da-ab0c-2d4f8a4f8e20",
+              "name": "originalSubject",
+              "value": "=\n{{ $('Gmail Trigger').item.json.Subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -432,
+        -224
+      ],
+      "id": "6b6272a0-87e6-405e-93cb-ca5a1a695eee",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8c40141-7843-4f1c-9843-f086381ee00a",
+              "name": "replyMessage",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "67dd474a-e8a7-4baf-8e9c-dcc6ef36f506",
+              "name": "emailId",
+              "value": "={{ $('Gmail Trigger').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c584a633-1e9e-4f24-bfd7-475552555c8b",
+              "name": "threadId",
+              "value": "={{ $('Gmail Trigger').first().json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "314c4359-9e2c-4413-8b5d-b5ea8303deda",
+              "name": "recipientEmail",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "c58ae5c6-cc10-44da-ab0c-2d4f8a4f8e20",
+              "name": "originalSubject",
+              "value": "=\n{{ $('Gmail Trigger').item.json.Subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        144
+      ],
+      "id": "ec3a7ff0-9dbb-4d28-af4c-060bc0c4e359",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.replyMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        -992
+      ],
+      "id": "8ed61afb-d027-44ca-a920-a29ce612ae19",
+      "name": "Reply to a message",
+      "webhookId": "3d5d513e-cf9f-4fc4-b4c7-e88f8cfb4533",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.replyMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        -608
+      ],
+      "id": "40c11020-ee37-4372-8816-c8f58175368c",
+      "name": "Reply to a message1",
+      "webhookId": "3d5d513e-cf9f-4fc4-b4c7-e88f8cfb4533",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.replyMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        -224
+      ],
+      "id": "fbc46ce0-e735-445e-aeb7-f51acf79b030",
+      "name": "Reply to a message2",
+      "webhookId": "3d5d513e-cf9f-4fc4-b4c7-e88f8cfb4533",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.replyMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        144
+      ],
+      "id": "69133ac3-d14f-4c66-8f58-e345649533c1",
+      "name": "Reply to a message3",
+      "webhookId": "3d5d513e-cf9f-4fc4-b4c7-e88f8cfb4533",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "leLrQL4oluj2Vyyk",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Add label to Work",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add label to Buisness",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add label to Personal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add label to thread3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to Work": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to Buisness": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to Personal": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to thread3": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read3": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool3": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1df1753d-eeaa-44c0-afd8-7a0710e074bb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "536cfd7f6dacd395ba5622fd2c3de1b86913d8d41fed377e8bead1e0fd7c43eb"
+  },
+  "id": "UxmXXt2DC32nrhUj",
+  "tags": []
+}

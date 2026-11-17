@@ -1,0 +1,1269 @@
+{
+  "name": "AI Lead Outreach Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "f9f45046-3aac-41f1-939d-3269646e542f",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json[\"Hasil Riset\"] }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2d54ef22-9b6b-43b8-9fba-1f2240545704",
+      "name": "If1",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        544,
+        848
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get latest news/description on topic that user want to reseaarch",
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+        "options": {}
+      },
+      "id": "017b8afe-b9c2-4b07-bed9-ce44625a7a4a",
+      "name": "Search Internet1",
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "position": [
+        1312,
+        1040
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "tavilyApi": {
+          "id": "cuD6T3pK9heSh1WO",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert business analyst. Your task is to research the company: {{ $json.Company }}.\n\nYour output must be a comprehensive description that identifies the company's name, its core business, and potential opportunities for improving efficiency and effectiveness by implementing AI solutions.\n\nUse the 'Search Internet' tool to gather the latest information.\n\nStrictly base your analysis on the data found through the internet search. Do not hallucinate or invent information.\n\nYour final output must be only the text description. Do not include any introductory sentences or greetings.",
+        "options": {}
+      },
+      "id": "dff9b6fe-80e2-4136-9293-747523f78489",
+      "name": "Company Research1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1152,
+        848
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "id": "80311063-ff4a-4a76-bda1-98cf5ce297ac",
+      "name": "Groq Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "position": [
+        1136,
+        1040
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "groqApi": {
+          "id": "YQpOqM0sPruE9EiM",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $('If1').item.json.Company }}",
+            "Status": "In progress"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Position",
+              "displayName": "Position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Research Result",
+              "displayName": "Research Result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Introduction Email",
+              "displayName": "Introduction Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Send Email",
+              "displayName": "Send Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Intro Email",
+              "displayName": "Response Intro Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Follow Up 1 Email",
+              "displayName": "Follow Up 1 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Follow Up 1",
+              "displayName": "Response Follow Up 1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Follow Up 2 Email",
+              "displayName": "Follow Up 2 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Follow Up 2",
+              "displayName": "Response Follow Up 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ec4d0431-d01e-4afc-837b-8e42a24c6f1c",
+      "name": "updateStatus",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1680,
+        832
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GiXxLUaJo3VWLbXx",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $('If1').item.json.Company }}",
+            "Research Result": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Position",
+              "displayName": "Position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Research Result",
+              "displayName": "Research Result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Introduction Email",
+              "displayName": "Introduction Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Send Email",
+              "displayName": "Send Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Intro Email",
+              "displayName": "Response Intro Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Follow Up 1 Email",
+              "displayName": "Follow Up 1 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Follow Up 1",
+              "displayName": "Response Follow Up 1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Follow Up 2 Email",
+              "displayName": "Follow Up 2 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Follow Up 2",
+              "displayName": "Response Follow Up 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "5cbefc2c-16b7-4854-9c56-ac5436b417df",
+      "name": "updateDescription",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1472,
+        832
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GiXxLUaJo3VWLbXx",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "4b812b3a-4007-4177-bab3-1055d9a9e9d4",
+      "name": "getTemplate",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        976,
+        1408
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "oi5y4OY4RMVbkIjr",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n    \"emailSubject\":\"Subject email \",\n    \"emailBody\": \"body email lengkap\"\n}"
+      },
+      "id": "94eed450-d392-4fd8-a922-59633ee2ca9e",
+      "name": "Structured Output Parser1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        1536,
+        1648
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "=https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $('If1').item.json.Company }}",
+            "Introduction Email": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Position",
+              "displayName": "Position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Research Result",
+              "displayName": "Research Result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Introduction Email",
+              "displayName": "Introduction Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Send Email",
+              "displayName": "Send Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Intro Email",
+              "displayName": "Response Intro Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Follow Up 1 Email",
+              "displayName": "Follow Up 1 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Follow Up 1",
+              "displayName": "Response Follow Up 1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Follow Up 2 Email",
+              "displayName": "Follow Up 2 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Response Follow Up 2",
+              "displayName": "Response Follow Up 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6cbb4817-a36a-4d36-a659-cd449719ab7e",
+      "name": "draftEmail",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1616,
+        1408
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "oi5y4OY4RMVbkIjr",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "5c6631c4-6ad5-4634-b388-ac5e3f3ba5bd",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        352,
+        992
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "be026b1e-ad35-406e-b052-cee7eb28cb38",
+      "name": "Get row(s) in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        560,
+        992
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "EkeCeZDyf3FdqNQ3",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Send Email": "={{ \"https://n8n-brccptxv.ap-southeast-1.clawcloudrun.com/webhook/18169b76-7b07-4fce-95c4-7e5bb6244ed1/send-email/\" + $json.perusahaan_url_encoded }}",
+            "Company": "={{ $('If1').item.json.Company }}"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Position",
+              "displayName": "Position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Research Result",
+              "displayName": "Research Result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Introduction Email",
+              "displayName": "Introduction Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Send Email",
+              "displayName": "Send Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Response Intro Email",
+              "displayName": "Response Intro Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Follow Up 1 Email",
+              "displayName": "Follow Up 1 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Response Follow Up 1",
+              "displayName": "Response Follow Up 1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Follow Up 2 Email",
+              "displayName": "Follow Up 2 Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Response Follow Up 2",
+              "displayName": "Response Follow Up 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9187c262-b743-4b1c-a507-36f676c1f060",
+      "name": "inputLink",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1984,
+        1408
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "oi5y4OY4RMVbkIjr",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Array untuk menampung hasil yang akan dikirim ke node selanjutnya\nconst outputItems = [];\n\n// Loop melalui setiap item yang masuk dari node sebelumnya\nfor (const item of items) {\n  try {\n    // 1. Ambil nama perusahaan dari English column\n    const companyName = item.json.Company;\n\n    // 2. URL Encode karo (spaces aur special characters ke liye)\n    const companyNameEncoded = encodeURIComponent(companyName);\n\n    // 3. Naya object banao with all original data + new encoded field\n    const outputData = {\n      ...item.json,                    // Saare original fields copy karo\n      perusahaan_url_encoded: companyNameEncoded   // New field for webhook link\n    };\n\n    // Output mein add karo\n    outputItems.push({ json: outputData });\n\n  } catch (error) {\n    // Agar koi error aaye (jaise Company field na ho) to item ko aise hi forward kar do\n    console.error(\"Error in Code node:\", error);\n    outputItems.push(item);\n  }\n}\n\n// Return processed items\nreturn outputItems;"
+      },
+      "id": "056090af-7ac4-4608-8415-8d6ed9ce9b4f",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1792,
+        1408
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get latest news/description on topic that user want to reseaarch",
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+        "options": {}
+      },
+      "id": "d9039b65-191d-4aae-85d5-424ffbbffcaa",
+      "name": "Search Internet2",
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "position": [
+        1424,
+        1632
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "tavilyApi": {
+          "id": "cuD6T3pK9heSh1WO",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ff8d1602-f26f-4a8d-aaf8-0cb1ad7eaa81",
+      "name": "Loop Over Items1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        912,
+        832
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "id": "40239c5f-86c6-4060-81b1-ac5ef908da05",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "position": [
+        1296,
+        1648
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "groqApi": {
+          "id": "YQpOqM0sPruE9EiM",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg",
+          "mode": "list",
+          "cachedResultName": "lead -research",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QBhl-0TSq6iXkWi2VmzHVg48Hz_0N71Iz8CbMclbMCg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "7c21c2ba-a65b-4fb6-bb46-881b476c318d",
+      "name": "getService",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        1136,
+        1408
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "oi5y4OY4RMVbkIjr",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert AI Sales Assistant, tasked with drafting a personalized and relevant email based on the provided data and additional research.\n\n1. PRIMARY CONTEXT (Based on Provided Data):\nSender's Company: Ainabler.com (IT consulting firm specializing in AI & Automation).\nSender's Name: Hanif R (Technical Sales).\nTarget Company: {{ $('If1').item.json.Perusahaan }}\nTarget Recipient: {{ $('If1').item.json.Nama }}\nRecipient's Position: {{ $('If1').item.json.Jabatan }}\nSales Stage: {{ $('getTemplate').item.json.Tahap }}\nMain Email Theme: {{ $('getTemplate').item.json.Tema }}\nKey Information: {{ $('Company Research1').item.json.output }}\nSample Message (For inspiration, not a rigid template): {{ $('getTemplate').item.json['Contoh message'] }}\nToday's Date: {{ $now }}\n\n2. ADDITIONAL RESEARCH TASK (Use Search Internet2):\nBefore writing the email, use Search Internet2 to find one or two recent facts/statistics (from 2024-2025) relevant to the recipient's position and their industry. The goal is to add a strong, data-driven 'hook' to make the email opening compelling.\nExample Research Direction: Based on the position '{{ $('If1').item.json.Jabatan }}', formulate a smart search query.\n- If the position is related to ESG, search for: \"ESG reporting challenges Indonesian banking 2025\"\n- If the position is related to Digital/Operations, search for: \"AI adoption statistics in Southeast Asia financial sector\"\n\n3. FINAL TASK: DRAFT THE EMAIL\nUse ALL the information above (Primary Context + Additional Research) to create one email draft.\n- Personalization: Mention the recipient's company name and position to show this is not a mass email.\n- Relevance: Connect the industry challenges (discovered from your research) with the solutions offered by Ainabler.com.\n- Value Proposition: Craft a natural and seamless offer based on our services and the target's business line. Adapt from the sample message, but do not be rigid.\n- Call to Action: Propose a brief discussion to explore possibilities.\n\n4. OUTPUT FORMAT (MANDATORY):\nYour final response MUST be a single, valid JSON object. Do not include any text, introductions, or closings outside of this JSON object.\n\n{\n  \"emailSubject\": \"A compelling and specific email subject\",\n  \"emailBody\": \"The complete, personalized, and relevant email body.\"\n}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "d332c1b5-17c1-4dee-84c3-ac2233383dfe",
+      "name": "AI Sales Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1312,
+        1408
+      ],
+      "executeOnce": true,
+      "typeVersion": 2,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "inputLink",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "inputLink": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "draftEmail": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getService": {
+      "main": [
+        [
+          {
+            "node": "AI Sales Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getTemplate": {
+      "main": [
+        [
+          {
+            "node": "getService",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "updateStatus": {
+      "main": [
+        [
+          {
+            "node": "getTemplate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Sales Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Company Research1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Company Research1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Internet1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Company Research1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Internet2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Sales Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Research1": {
+      "main": [
+        [
+          {
+            "node": "updateDescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "updateDescription": {
+      "main": [
+        [
+          {
+            "node": "updateStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Sales Assistant": {
+      "main": [
+        [
+          {
+            "node": "draftEmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Sales Assistant",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "99d21f6b-32de-47f6-991c-7022ddfe1280",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce5c4e835ab243fda838f0d6b2e0d77a8907af3dad55a669819a1024fc054b2f"
+  },
+  "id": "AePI18tVl2WJ3kzW",
+  "tags": []
+}

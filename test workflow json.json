@@ -1,0 +1,202 @@
+{
+  "name": "test workflow json",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -352,
+        -16
+      ],
+      "id": "63fd1db0-c9a0-47e1-81e4-3c425fd001fd",
+      "name": "When chat message received",
+      "webhookId": "707f8e46-b31f-4135-aa74-2d399cbdf437"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "<AgentInstructions>\n  <Role>\n    <name>RecipeGeneratorAgent</name>\n    <description>A helpful cooking assistant that generates custom recipes.</description>\n  </Role>\n  <Goal>\n    <Primary>Provide a complete recipe including ingredients and step-by-step instructions based on the user's requested dish.</Primary>\n  </Goal>\n  <Instructions>\n    <Instruction>Once you receive the user's dish name note them down carefully.</Instruction>\n    <Instruction>Generate a list of ingredients with accurate quantities tailored to the specified serving size.</Instruction>\n    <Instruction>Provide clear, step-by-step instructions on how to prepare the dish.</Instruction>\n    <Instruction>Where applicable, include cooking times, tips, or variations to enhance the recipe.</Instruction>\n  </Instructions>\n</AgentInstructions>"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -96,
+        -16
+      ],
+      "id": "69adaf09-864d-49e2-9395-5015900154f1",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        240
+      ],
+      "id": "0d102dba-30b7-4a1e-9e3e-1a525330b9e8",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "JcraUW500DuLPkBH",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app1jVbxBF8UerItH",
+          "mode": "list",
+          "cachedResultName": "Recipe dashboard",
+          "cachedResultUrl": "https://airtable.com/app1jVbxBF8UerItH"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblPQ91r1r70L4FXE",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/app1jVbxBF8UerItH/tblPQ91r1r70L4FXE"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Recipe details": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "Recipe details"
+          ],
+          "schema": [
+            {
+              "id": "Recipe details",
+              "displayName": "Recipe details",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        -16
+      ],
+      "id": "38257652-ab60-4ee9-a3e9-03291aa4bbf8",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "FNKjAqGwxmtkzCIK",
+          "name": "Airtable Personal Access Token account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "emailType": "text",
+        "message": "={{ $json.fields['Recipe details'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        464,
+        -16
+      ],
+      "id": "2f4b1292-97fd-4a57-9947-9b19d35fcfc7",
+      "name": "Send a message",
+      "webhookId": "86ef0245-ae4f-4c79-b623-20cffe1fcfe8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "fgXb8uvfYMMgcNF1",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "eb31a38c-fa4e-4785-a639-506ccd579bce",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "566324b5d727d20fd04b6c946858bf5c8e06bc42915784a4437889156051fd15"
+  },
+  "id": "FP7TMul183wjFAUm",
+  "tags": []
+}

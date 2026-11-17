@@ -1,0 +1,777 @@
+{
+  "name": "Smart Lead Scraper & Auto Email System",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Lead Machine",
+        "formDescription": "Provide the Info Below",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Business Type",
+              "placeholder": "e.g. Plumber",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Location",
+              "placeholder": "e.g. Rome, Italy",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Lead Number",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email Style",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Friendly"
+                  },
+                  {
+                    "option": "Professional"
+                  },
+                  {
+                    "option": "Simple"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "GO 🚀"
+        }
+      },
+      "id": "49a75edf-736f-4054-aea8-8a24c159f27b",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "position": [
+        1264,
+        368
+      ],
+      "webhookId": "2ef0c938-f117-4f6c-840a-b2dc35a615b3",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token=YOUR_APIFY_API_TOKEN",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"includeWebResults\": false,\n    \"language\": \"en\",\n    \"locationQuery\": \"{{ $json.Location }}\",\n    \"maxCrawledPlacesPerSearch\": {{ $json['Lead Number'] }},\n    \"maxImages\": 0,\n    \"maximumLeadsEnrichmentRecords\": 0,\n    \"scrapeContacts\": false,\n    \"scrapeDirectories\": false,\n    \"scrapeImageAuthors\": false,\n    \"scrapePlaceDetailPage\": false,\n    \"scrapeReviewsPersonalData\": true,\n    \"scrapeTableReservationProvider\": false,\n    \"searchStringsArray\": [\n        \"{{ $json['Business Type'] }}\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+        "options": {}
+      },
+      "id": "2294be1e-b7e7-437a-ba31-322bf4c7065f",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1488,
+        368
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "text": "=Visit this website and extract ONLY one valid email address:\n\n{{ $json.website }}\n\nRules:\n- Only 1 email\n- Must contain @\n- If not found return null",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "Email Address",
+              "description": "=find out the best only one email address from the website after scraping the website. The mail address have to be in ideal format.",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "571cd0ce-4578-4e7a-8a92-647ef4662d3b",
+      "name": "Information Extractor",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [
+        1936,
+        368
+      ],
+      "typeVersion": 1.2,
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-latest",
+        "options": {}
+      },
+      "id": "0d5da717-af00-429f-91aa-cf09402341e0",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        2016,
+        592
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LYmT8RM7OtZ5HsyC",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0906e21a-0958-433e-b400-8694915ef3c9",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.website }}",
+              "rightValue": ""
+            },
+            {
+              "id": "fdf7dcc4-14cc-407f-a8b7-2c167977a900",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "http",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1cc441c-8138-4038-a5bf-b243f830d2ea",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        1712,
+        368
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1tAhIBLLkjWmm6Jc8WVwIxOnrveePFgdIIIVAM1AD2XY",
+          "mode": "list",
+          "cachedResultName": "lead-machine",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tAhIBLLkjWmm6Jc8WVwIxOnrveePFgdIIIVAM1AD2XY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tAhIBLLkjWmm6Jc8WVwIxOnrveePFgdIIIVAM1AD2XY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Address": "={{ $('Filter').item.json.address }}",
+            "Website": "={{ $('Filter').item.json.website }}",
+            "Category": "={{ $('Filter').item.json.categoryName }}",
+            "Company Name": "={{ $('Filter').item.json.title }}",
+            "Email Address": "={{ $json.output['Email Address'] }}",
+            "Phone Number": "={{ $('Filter').item.json.phone }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cold Mail Status",
+              "displayName": "Cold Mail Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SEND Time",
+              "displayName": "SEND Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e3f168e5-4330-4ee7-ba4e-52df7d58f120",
+      "name": "Append row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2512,
+        272
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zzqE1FAweocZ0Kjh",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "0601f2d2-2522-471e-9e11-29498a47e19a",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "leftValue": "={{ $json.output['Email Address'] }}",
+              "rightValue": "@"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0a3d98f3-2446-4491-9e86-f97759765b4a",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2288,
+        368
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {},
+      "id": "fd369959-451a-4e86-b988-4e233a5e2904",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        2512,
+        464
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Loop Over Items').item.json['Email Address'] }}",
+        "subject": "={{ $('Information Extractor1').item.json.output['Mail Subject'] }}",
+        "emailType": "text",
+        "message": "={{ $('Information Extractor1').item.json.output['Mail Body'] }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "87b79200-12c4-43a9-97c8-72727e73bf11",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "maxTries": 2,
+      "position": [
+        3760,
+        144
+      ],
+      "webhookId": "9ce15ceb-1aeb-4dd7-b269-f981f431c05f",
+      "executeOnce": false,
+      "retryOnFail": false,
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "30KrMseLTibv1M20",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "text": "=You are a perfect cold mail generator for a Digital Marketing Agency named Upward Engine.\n\nHere's the Information about the Recipient:\n\nCompany Name: {{ $('Loop Over Items').item.json['Company Name'] }}\nBusiness Type: {{ $('Loop Over Items').item.json.Category }}\n\nEmail Style / Email Tune : {{ $json['Email Style'] }}\n\nThe Email style is given just to understand how the mail will be.\n\nInstructions:\n\n1. Always start with giving a greting to the Company like Hi Company Name,\n2. Always use We not I.\n3. Mail have to be professional, Clean and to the point\n4. At last give a Signeture Like:\n   [Your Name]\n  [Your Company/Agency Name]",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "Mail Subject",
+              "description": "Eye catchy mail Subject for the cold mail",
+              "required": true
+            },
+            {
+              "name": "Mail Body",
+              "description": "=body message of the mail, a perfect and clear cold mail.",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "db871413-4d1c-4d9f-be82-f5b938baa7b1",
+      "name": "Information Extractor1",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [
+        3184,
+        144
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "325cc956-c3b8-4222-bdd6-0712d9061f99",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        3168,
+        544
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "0ilB0wx2f7s2AnQ0",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1tAhIBLLkjWmm6Jc8WVwIxOnrveePFgdIIIVAM1AD2XY",
+          "mode": "list",
+          "cachedResultName": "lead-machine",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tAhIBLLkjWmm6Jc8WVwIxOnrveePFgdIIIVAM1AD2XY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tAhIBLLkjWmm6Jc8WVwIxOnrveePFgdIIIVAM1AD2XY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SEND Time": "={{ $now.toFormat(\"yyyy-MM-dd HH:mm:ss\") }}",
+            "Website": "={{ $('Filter').item.json.website }}",
+            "Phone Number": "={{ $('Filter').item.json.phone }}",
+            "Company Name": "={{ $('Filter').item.json.title }}",
+            "Category": "={{ $('Filter').item.json.categoryName }}",
+            "Email Address": "={{ $('Loop Over Items').item.json['Email Address'] }}",
+            "Address": "={{ $('Filter').item.json.address }}",
+            "Cold Mail Status": "=\"Cold Mail Status\": \"Sent on {{$now.toFormat('MM-dd-yyyy')}}\""
+          },
+          "matchingColumns": [
+            "Email Address"
+          ],
+          "schema": [
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cold Mail Status",
+              "displayName": "Cold Mail Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SEND Time",
+              "displayName": "SEND Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "8b727879-86bf-411e-a0b0-7cf4e55be0e5",
+      "name": "Append or update row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        3984,
+        272
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zzqE1FAweocZ0Kjh",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8ab73a5e-6659-4615-9f03-a1b3dacaa42e",
+              "name": "Send Time",
+              "type": "string",
+              "value": "={{$now.toFormat(\"MM-dd-yyyy (h:mm a)\")}}"
+            },
+            {
+              "id": "a102af99-f990-4f54-aa19-96a4c8002a9b",
+              "name": "Email Address",
+              "type": "string",
+              "value": "={{ $json.output['Email Address'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "57178d65-593e-44c9-91f5-b2b917b0a3cc",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3536,
+        144
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "3e2a864f-9077-43a4-8b35-32a64201c03a",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        2736,
+        272
+      ],
+      "notesInFlow": false,
+      "typeVersion": 3,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "f13527f0-7873-4dd7-8c1a-c56d227fa171",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        2960,
+        144
+      ],
+      "webhookId": "a8a457d5-f88d-451c-ac51-1af17c8435b0",
+      "typeVersion": 1.1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "505e379b-f9cf-4d11-8741-7690e862d8bc",
+  "meta": {
+    "templateId": "7423",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "39085c2c62d2a70e31524b3ff229a17d5546731ec810ff51e1d87eb0c83c018e"
+  },
+  "id": "lxbMACTofECrk8Ou",
+  "tags": []
+}

@@ -1,0 +1,618 @@
+{
+  "name": "AI YouTube Video Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f924ea44-06d5-4f7a-a09b-eeead71e344f",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -928,
+        -64
+      ],
+      "webhookId": "REPLACE_WITH_YOUR_WEBHOOK_ID",
+      "credentials": {
+        "telegramApi": {
+          "id": "6UOeDwlbplnf2rJ0",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "topic",
+              "type": "string",
+              "value": "={{ $json.message.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b5934baf-9646-4b0c-92b7-9495451ab320",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -704,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.topic }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a research agent. Based on the user's topic, produce two YouTube search queries (a primary and an alternate angle) and output them in the structured format expected by the parser."
+        }
+      },
+      "id": "b1d71372-cccc-40a6-9f2f-f8614e11050d",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -480,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n \"type\": \"object\",\n \"properties\": {\n \"query1\": { \"type\": \"string\" },\n \"query2\": { \"type\": \"string\" }\n },\n \"required\": [\"query1\", \"query2\"]\n}"
+      },
+      "id": "5df88320-f550-4841-b208-5ac31e6b7312",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -320,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "snippet"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.output.query1 }}"
+            },
+            {
+              "name": "type",
+              "value": "video"
+            },
+            {
+              "name": "maxResults",
+              "value": "5"
+            },
+            {
+              "name": "order",
+              "value": "relevance"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d675f629-c5e2-4c5b-8b4a-43b646ceedd7",
+      "name": "Youtube search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        -272
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "lZ58hGl4nlloPeIu",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "snippet"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.output.query2 }}"
+            },
+            {
+              "name": "type",
+              "value": "video"
+            },
+            {
+              "name": "maxResults",
+              "value": "5"
+            },
+            {
+              "name": "order",
+              "value": "relevance"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "07d4cb42-2fcf-4a10-9da0-b1a8055b0e09",
+      "name": "Youtube search1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -176,
+        16
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "lZ58hGl4nlloPeIu",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "3a2e5396-e456-4c88-9a56-4f9c59d69fbf",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -16,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json) }}",
+        "options": {
+          "systemMessage": "You are a professional YouTube video script writer. Using the YouTube search results provided, write a short, engaging narration script (maximum 150-180 words) for a short video. Only return the pure narration text. Do not add any extra explanation or title."
+        }
+      },
+      "id": "d48a133e-7616-4287-ab32-7a8a4d0f90c2",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        192,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "narration",
+              "type": "string",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "id": "b2",
+              "name": "videoData",
+              "type": "string",
+              "value": "={{ $json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2d10337d-74fe-4ac0-9829-a31282c1c182",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=YOUR_GOOGLE_CLOUD_API_KEY",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": {{ JSON.stringify($json.narration) }}\n    }]\n  }],\n  \"generationConfig\": {\n    \"responseModalities\": [\"AUDIO\"],\n    \"speechConfig\": {\n      \"voiceConfig\": {\n        \"prebuiltVoiceConfig\": {\n          \"voiceName\": \"Kore\"\n        }\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        704,
+        -288
+      ],
+      "id": "2b19c859-e5ee-4aa0-bea8-c4d08460e6b0",
+      "name": "Generate Speech"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert Gemini TTS raw PCM (base64) to proper WAV file\n\nconst items = [];\n\nfor (const item of $input.all()) {\n  try {\n    // Gemini response se base64 audio nikalna\n    const base64Audio = item.json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data \n                     || item.json.candidates?.[0]?.content?.parts?.[0]?.inline_data?.data;\n\n    if (!base64Audio) {\n      throw new Error(\"No audio data found in Gemini response\");\n    }\n\n    // Base64 ko binary buffer mein convert karo\n    const pcmBuffer = Buffer.from(base64Audio, 'base64');\n\n    // WAV header banate hain (24kHz, 16-bit, mono - Gemini TTS standard)\n    const sampleRate = 24000;\n    const numChannels = 1;\n    const bitsPerSample = 16;\n    const byteRate = sampleRate * numChannels * bitsPerSample / 8;\n    const blockAlign = numChannels * bitsPerSample / 8;\n    const dataSize = pcmBuffer.length;\n    const fileSize = 36 + dataSize;\n\n    // WAV Header (44 bytes)\n    const header = Buffer.alloc(44);\n\n    // \"RIFF\"\n    header.write('RIFF', 0);\n    // File size - 8\n    header.writeUInt32LE(fileSize, 4);\n    // \"WAVE\"\n    header.write('WAVE', 8);\n    // \"fmt \"\n    header.write('fmt ', 12);\n    // Subchunk1 size (16 for PCM)\n    header.writeUInt32LE(16, 16);\n    // Audio format (1 = PCM)\n    header.writeUInt16LE(1, 20);\n    // Num channels\n    header.writeUInt16LE(numChannels, 22);\n    // Sample rate\n    header.writeUInt32LE(sampleRate, 24);\n    // Byte rate\n    header.writeUInt32LE(byteRate, 28);\n    // Block align\n    header.writeUInt16LE(blockAlign, 32);\n    // Bits per sample\n    header.writeUInt16LE(bitsPerSample, 34);\n    // \"data\"\n    header.write('data', 36);\n    // Data size\n    header.writeUInt32LE(dataSize, 40);\n\n    // Header + PCM data\n    const wavBuffer = Buffer.concat([header, pcmBuffer]);\n\n    // Binary data n8n format mein return karo\n    items.push({\n      json: {\n        success: true,\n        message: \"PCM converted to WAV successfully\",\n        narration: item.json.narration || $node[\"Edit Fields1\"].json.narration\n      },\n      binary: {\n        data: {\n          data: wavBuffer.toString('base64'),\n          mimeType: 'audio/wav',\n          fileName: 'narration.wav',\n          fileExtension: 'wav'\n        }\n      }\n    });\n\n  } catch (error) {\n    items.push({\n      json: {\n        success: false,\n        error: error.message\n      }\n    });\n  }\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        -288
+      ],
+      "id": "e80991ab-0be8-4838-acf6-d4d0eaf9b79d",
+      "name": "Convert PCM to WAV"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        144
+      ],
+      "id": "42dd7418-1574-477a-bc2d-4b417fd9e119",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "nwXFlJ8uFaoG5apu",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        176,
+        80
+      ],
+      "id": "e767a1aa-042d-46f0-b04f-5e63a782ae62",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "nwXFlJ8uFaoG5apu",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const narration = $input.first().json.narration || $node[\"Edit Fields1\"].json.narration || \"\";\n\n// Narration ko chhote pieces mein todo (har scene ~10-12 seconds)\nfunction splitText(text, maxLength = 140) {\n  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];\n  const chunks = [];\n  let current = \"\";\n\n  for (const sentence of sentences) {\n    if ((current + sentence).length > maxLength && current) {\n      chunks.push(current.trim());\n      current = sentence;\n    } else {\n      current += \" \" + sentence;\n    }\n  }\n  if (current.trim()) chunks.push(current.trim());\n  return chunks.slice(0, 5); // max 5 scenes (free plan safe)\n}\n\nconst chunks = splitText(narration);\n\nconst scenes = chunks.map((text, index) => {\n  return {\n    \"duration\": 11,\n    \"background-color\": index % 2 === 0 ? \"#0f172a\" : \"#1e293b\",\n    \"elements\": [\n      {\n        \"type\": \"text\",\n        \"style\": \"001\",\n        \"text\": text,\n        \"duration\": 11,\n        \"settings\": {\n          \"font-size\": \"38px\",\n          \"font-family\": \"Arial\",\n          \"color\": \"#ffffff\",\n          \"text-align\": \"center\",\n          \"vertical-align\": \"middle\",\n          \"line-height\": \"1.45\",\n          \"padding\": \"40px\"\n        }\n      }\n    ]\n  };\n});\n\nconst videoJson = {\n  \"resolution\": \"full-hd\",\n  \"quality\": \"high\",\n  \"scenes\": scenes\n};\n\nreturn [\n  {\n    json: {\n      narration: narration,\n      videoPayload: videoJson,\n      sceneCount: scenes.length\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -288
+      ],
+      "id": "b298f8a4-2128-41e3-a534-4ffb532b6d51",
+      "name": "Build Video JSON"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.videoPayload }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1376,
+        -288
+      ],
+      "id": "fad3153b-8cd6-4f29-ae85-26afae6567b9",
+      "name": "Create Video",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RdFNdQx0iYrljXRz",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 50
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        -80
+      ],
+      "id": "ec0e7756-786f-487b-ba18-6448b09d891f",
+      "name": "Wait for Video",
+      "webhookId": "5b3495fe-dafe-4e0a-bfef-db29a78f60fd"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.json2video.com/v2/movies?project={{ $json.project }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1104,
+        -80
+      ],
+      "id": "854972c5-2e62-4aff-a10d-4a531ba972b1",
+      "name": "Get Video Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RdFNdQx0iYrljXRz",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "file": "={{ $json.movie?.url || $json.url }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "6978dd77-873e-4527-bad0-ecad7225885b",
+      "name": "Send Video to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        -80
+      ],
+      "webhookId": "a1e4d52c-f652-47c7-8f0f-01c4471962c9",
+      "credentials": {
+        "telegramApi": {
+          "id": "6UOeDwlbplnf2rJ0",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Youtube search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Youtube search1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Youtube search": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Youtube search1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Generate Speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Speech": {
+      "main": [
+        [
+          {
+            "node": "Convert PCM to WAV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PCM to WAV": {
+      "main": [
+        [
+          {
+            "node": "Build Video JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Video JSON": {
+      "main": [
+        [
+          {
+            "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video": {
+      "main": [
+        [
+          {
+            "node": "Wait for Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Video": {
+      "main": [
+        [
+          {
+            "node": "Get Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video Status": {
+      "main": [
+        [
+          {
+            "node": "Send Video to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "dd779e7c-9069-4c4f-a6bb-9dfa8a5c431f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "981f93715856e936f7f79267eb8ede3ec19f73dad202841baacfa456b4e776ae"
+  },
+  "nodeGroups": [],
+  "id": "7zaAKZNERYJJAALf",
+  "tags": []
+}

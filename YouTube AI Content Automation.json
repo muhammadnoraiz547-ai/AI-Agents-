@@ -1,0 +1,1360 @@
+{
+  "name": "YouTube AI Content Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "c57dd68f-ddd9-49a4-a301-b13a39a4e198",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2960,
+        32
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1d517360-3df5-4972-a14f-89774e8889d1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2960,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "geminiApiKey",
+              "value": "YOUR_GEMINI_API_KEY",
+              "type": "string"
+            },
+            {
+              "name": "creatomateApiKey",
+              "value": "YOUR_CREATOMATE_API_KEY",
+              "type": "string"
+            },
+            {
+              "name": "creatomateTemplateId",
+              "value": "YOUR_CREATOMATE_TEMPLATE_ID",
+              "type": "string"
+            },
+            {
+              "name": "topicsSpreadsheetId",
+              "value": "YOUR_TOPICS_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "name": "contentDbSpreadsheetId",
+              "value": "YOUR_CONTENT_DB_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "name": "draftDbSpreadsheetId",
+              "value": "YOUR_DRAFT_DB_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "name": "logSpreadsheetId",
+              "value": "YOUR_LOG_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "name": "uploadEndpoint",
+              "value": "https://your-storage-upload-endpoint.example.com/upload",
+              "type": "string"
+            },
+            {
+              "name": "voiceoverEnabled",
+              "value": "true",
+              "type": "boolean"
+            },
+            {
+              "name": "youtubeChannelId",
+              "value": "YOUR_YOUTUBE_CHANNEL_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cb84d465-0497-44a3-9eab-f541cd94bef2",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2736,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{$json.topicsSpreadsheetId}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Topics",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "7377cd8c-b7e2-43ef-9ec5-2370e1ae6f42",
+      "name": "Load Pending Topics",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2512,
+        32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1QLcBxUqG8uYnz3Z",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.status}}",
+              "rightValue": "Pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "1d06586a-1788-4f33-8524-85bd6565c8c4",
+      "name": "Filter Pending",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -2288,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Configuration\"].json.contentDbSpreadsheetId}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Published",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "aab3aea3-d166-43a4-b848-1e55d8bbaa45",
+      "name": "Load Content DB",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2064,
+        32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1QLcBxUqG8uYnz3Z",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build a compact text list of previously published titles, angles and hashes\n// so Gemini can be given context to avoid duplicates.\nconst dbItems = $('Load Content DB').all();\nconst summaryLines = dbItems.map(i => `- ${i.json.title} | angle: ${i.json.angle} | hash: ${i.json.angleHash}`);\nconst topic = $('Filter Pending').first().json;\nreturn [{\n  json: {\n    ...topic,\n    previousContentSummary: summaryLines.join('\\n'),\n    previousHashes: dbItems.map(i => i.json.angleHash)\n  }\n}];"
+      },
+      "id": "c326b37e-13ae-4340-bbcd-c9a3c450a969",
+      "name": "Prepare Previous",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1840,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$node[\"Configuration\"].json.geminiApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: 'Analyze this topic for a short-form video and summarize the key facts, hook potential and target audience. Topic: ' + $json.topic + '. Description: ' + $json.description } ] } ] }) }}",
+        "options": {}
+      },
+      "id": "eaf085a7-47e8-4eb9-af74-efa25a68260d",
+      "name": "1. Analyze Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1616,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$node[\"Configuration\"].json.geminiApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: 'Based on this analysis, propose ONE unique content angle that is different from these previous angles:\\n' + $('Prepare Previous').first().json.previousContentSummary + '\\n\\nAnalysis: ' + $json.candidates[0].content.parts[0].text + '\\n\\nReturn ONLY the angle in one short sentence.' } ] } ] }) }}",
+        "options": {}
+      },
+      "id": "2d43dd15-aaaf-4762-84fc-1508b30442b4",
+      "name": "2. Generate Angle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1392,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst angle = $json.candidates[0].content.parts[0].text.trim();\nconst hash = crypto.createHash('sha256').update(angle.toLowerCase()).digest('hex');\nconst previousHashes = $('Prepare Previous').first().json.previousHashes || [];\nreturn [{\n  json: {\n    ...$('Prepare Previous').first().json,\n    angle,\n    angleHash: hash,\n    isHashDuplicate: previousHashes.includes(hash)\n  }\n}];"
+      },
+      "id": "a57dd967-7b23-4a7c-a988-7a64905e58ce",
+      "name": "Hash Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1168,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$node[\"Configuration\"].json.geminiApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: 'Compare the NEW angle to the list of PREVIOUS angles/titles and decide if it is a semantic duplicate (same core idea even if worded differently).\\n\\nNEW ANGLE: ' + $json.angle + '\\n\\nPREVIOUS:\\n' + $json.previousContentSummary + '\\n\\nRespond ONLY with strict JSON: {\\\"isDuplicate\\\": true|false, \\\"reason\\\": \\\"...\\\"}' } ] } ] }) }}",
+        "options": {}
+      },
+      "id": "3e453750-34e2-449e-876a-782412a08e42",
+      "name": "3. Semantic Dup Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -944,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.candidates[0].content.parts[0].text;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nlet parsed = { isDuplicate: false, reason: 'parse_failed' };\ntry { parsed = JSON.parse(cleaned); } catch (e) {}\nconst prev = $('Hash Check').first().json;\nreturn [{ json: { ...prev, isSemanticDuplicate: parsed.isDuplicate, dupReason: parsed.reason } }];"
+      },
+      "id": "db5bc509-5be7-4096-868a-84d687677bf3",
+      "name": "Parse Dup Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.isHashDuplicate || $json.isSemanticDuplicate}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "ffdf662f-8464-44e0-964f-717769b4cb8d",
+      "name": "IF Duplicate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -512,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Configuration\"].json.logSpreadsheetId}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic": "={{$json.topic}}",
+            "angle": "={{$json.angle}}",
+            "status": "skipped_duplicate",
+            "reason": "={{$json.dupReason || 'hash_match'}}",
+            "timestamp": "={{$now.toISO()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "bae5510e-ac8d-43f8-a9e0-b2281f71d35e",
+      "name": "Log Skipped Duplicate",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        48
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1QLcBxUqG8uYnz3Z",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$node[\"Configuration\"].json.geminiApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: 'Write a short-form video script for this angle. Topic: ' + $json.topic + '. Angle: ' + $json.angle + '. Return ONLY strict JSON: {\\\"title\\\":\\\"...\\\",\\\"scenes\\\":[{\\\"sceneNumber\\\":1,\\\"visualPrompt\\\":\\\"...\\\",\\\"voiceoverText\\\":\\\"...\\\",\\\"onScreenText\\\":\\\"...\\\"}]}' } ] } ] }) }}",
+        "options": {}
+      },
+      "id": "6ca0551d-b4bd-4b07-8998-4c458bfea071",
+      "name": "4. Generate Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1200,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst raw = $json.candidates[0].content.parts[0].text;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nlet script = {};\ntry { script = JSON.parse(cleaned); } catch (e) { script = { title: 'Untitled', scenes: [] }; }\nconst prev = $('Parse Dup Result').first().json;\nconst scriptHash = crypto.createHash('sha256').update(JSON.stringify(script)).digest('hex');\nconst contentId = crypto.randomUUID();\nreturn [{\n  json: {\n    contentId,\n    topic: prev.topic,\n    angle: prev.angle,\n    angleHash: prev.angleHash,\n    scriptHash,\n    title: script.title,\n    scenes: script.scenes,\n    voiceoverEnabled: $('Configuration').first().json.voiceoverEnabled\n  }\n}];"
+      },
+      "id": "37355a84-3865-411e-9cf3-498385710747",
+      "name": "Add Hashes + ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Configuration\"].json.draftDbSpreadsheetId}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Drafts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contentId": "={{$json.contentId}}",
+            "title": "={{$json.title}}",
+            "topic": "={{$json.topic}}",
+            "angle": "={{$json.angle}}",
+            "angleHash": "={{$json.angleHash}}",
+            "scriptHash": "={{$json.scriptHash}}",
+            "status": "draft",
+            "timestamp": "={{$now.toISO()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "268cdfb6-684e-4513-a93b-f72ba460e80c",
+      "name": "Save Draft DB",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -736,
+        720
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1QLcBxUqG8uYnz3Z",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Save Draft DB').first().json.length ? $('Add Hashes + ID').first().json : $('Add Hashes + ID').first().json;\nconst base = $('Add Hashes + ID').first().json;\nreturn (base.scenes || []).map(scene => ({\n  json: {\n    contentId: base.contentId,\n    title: base.title,\n    voiceoverEnabled: base.voiceoverEnabled,\n    ...scene\n  }\n}));"
+      },
+      "id": "d8556fbe-9779-4a61-9269-2b262bc8ded7",
+      "name": "Prepare Scenes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e3856a59-8321-4878-85c7-1cbac1889350",
+      "name": "Split Scenes",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$('Configuration').first().json.geminiApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: $json.visualPrompt } ] } ] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "af716761-8f65-46a0-9445-5315b32fbb3c",
+      "name": "Generate Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -64,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$('Configuration').first().json.uploadEndpoint}}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "286923aa-4427-481c-95fe-8105a802d81a",
+      "name": "Upload Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Runs once the Split Scenes loop is finished (\"done\" output).\nconst base = $('Add Hashes + ID').first().json;\nconst uploaded = $('Upload Image').all();\nconst images = uploaded.map((item, idx) => ({\n  sceneNumber: idx + 1,\n  imageUrl: item.json.url || item.json.publicUrl || item.json.data\n}));\nreturn [{ json: { ...base, images } }];"
+      },
+      "id": "eaa04635-f9af-4f12-b1eb-622bef1c2de8",
+      "name": "Collect Images",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.voiceoverEnabled}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "1b60e54d-705b-4a4d-9d07-e1cbdfacd28f",
+      "name": "IF Voiceover",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/speech",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "==Bearer {{$('Configuration').first().json.groqApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=   ={{ JSON.stringify({ model: \"canopylabs/orpheus-v1-english\", voice: \"troy\", input: $json.scenes.map(s => s.voiceoverText).join(' '), response_format: \"wav\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "af998cfa-0d10-4408-bb3f-ba45d5f22741",
+      "name": "Generate TTS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        384,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$('Configuration').first().json.uploadEndpoint}}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "31131cac-a074-4060-842f-8da1d10df049",
+      "name": "Upload Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        608,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "input1"
+      },
+      "id": "c2880175-5e6d-49f1-8d20-f5607afc7644",
+      "name": "Merge Audio Branch",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        608,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Collect Images').first().json;\nconst audio = $json.audioUrl || $json.url || null;\nconst elements = base.images.map(img => ({\n  type: 'image',\n  source: img.imageUrl,\n  duration: 3\n}));\nreturn [{\n  json: {\n    template_id: $('Configuration').first().json.creatomateTemplateId,\n    modifications: {\n      elements,\n      audioUrl: audio\n    },\n    contentId: base.contentId,\n    title: base.title\n  }\n}];"
+      },
+      "id": "ca5809c8-8095-409e-9810-54dbd2bae5a9",
+      "name": "Build Creatomate Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        208,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$('Configuration').first().json.creatomateApiKey}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ template_id: $json.template_id, modifications: $json.modifications }) }}",
+        "options": {}
+      },
+      "id": "1d1644c1-1024-497b-8926-57fbfd780e3c",
+      "name": "Creatomate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -176,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "a76f7adf-51d6-4fac-a273-14b2cb44b27f",
+      "name": "Wait For Render",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        1088
+      ],
+      "webhookId": "cbdfdfbf-55c4-4908-9e2a-6872b843f327"
+    },
+    {
+      "parameters": {
+        "url": "={{$('Creatomate').first().json[0].url}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "0ed06937-4f1f-4c4d-8dbe-a345e3ea8bf2",
+      "name": "Download MP4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -752,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$node[\"Configuration\"].json.geminiApiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: 'Given this video title: ' + $('Build Creatomate Source').first().json.title + ' — compare it once more against previous published titles for near-duplicates:\\n' + $('Prepare Previous').first().json.previousContentSummary + '\\n\\nRespond ONLY strict JSON: {\\\"isDuplicate\\\": true|false}' } ] } ] }) }}",
+        "options": {}
+      },
+      "id": "2341ded6-7c89-42e2-b72d-f1fd176dc173",
+      "name": "5. Final Dup Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1056,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.candidates[0].content.parts[0].text;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nlet parsed = { isDuplicate: false };\ntry { parsed = JSON.parse(cleaned); } catch (e) {}\nreturn [{ json: { ...$('Build Creatomate Source').first().json, isFinalDuplicate: parsed.isDuplicate } }];"
+      },
+      "id": "b4898b53-b69a-4abe-bea4-d35d7b0b2106",
+      "name": "Parse Final Dup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.isFinalDuplicate}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "4c4e682b-8dc4-4177-b29d-697a3f63d6ef",
+      "name": "IF Final Dup",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1072,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Configuration\"].json.logSpreadsheetId}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contentId": "={{$json.contentId}}",
+            "title": "={{$json.title}}",
+            "status": "blocked_final_duplicate",
+            "timestamp": "={{$now.toISO()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "31287465-7eca-4351-a0eb-d600df66403e",
+      "name": "Log Final Duplicate Blocked",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -336,
+        1360
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1QLcBxUqG8uYnz3Z",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{$json.title}}",
+        "regionCode": "US",
+        "categoryId": "22",
+        "options": {}
+      },
+      "id": "b9cef81b-7764-4a2c-8c68-7a03ba808b10",
+      "name": "YouTube Upload",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        1552
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "5U2oxU9gMBrPRd9Z",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Configuration\"].json.logSpreadsheetId}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contentId": "={{$json.contentId}}",
+            "title": "={{$json.title}}",
+            "youtubeVideoId": "={{$json.id}}",
+            "status": "published",
+            "timestamp": "={{$now.toISO()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "4aa7a4b6-6f58-4e10-8321-260cc5794538",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -112,
+        1552
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1QLcBxUqG8uYnz3Z",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Load Pending Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Pending Topics": {
+      "main": [
+        [
+          {
+            "node": "Filter Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Pending": {
+      "main": [
+        [
+          {
+            "node": "Load Content DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Content DB": {
+      "main": [
+        [
+          {
+            "node": "Prepare Previous",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Previous": {
+      "main": [
+        [
+          {
+            "node": "1. Analyze Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Analyze Topic": {
+      "main": [
+        [
+          {
+            "node": "2. Generate Angle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Generate Angle": {
+      "main": [
+        [
+          {
+            "node": "Hash Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash Check": {
+      "main": [
+        [
+          {
+            "node": "3. Semantic Dup Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Semantic Dup Check": {
+      "main": [
+        [
+          {
+            "node": "Parse Dup Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Dup Result": {
+      "main": [
+        [
+          {
+            "node": "IF Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Log Skipped Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "4. Generate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Generate Script": {
+      "main": [
+        [
+          {
+            "node": "Add Hashes + ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Hashes + ID": {
+      "main": [
+        [
+          {
+            "node": "Save Draft DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Draft DB": {
+      "main": [
+        [
+          {
+            "node": "Prepare Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Scenes": {
+      "main": [
+        [
+          {
+            "node": "Split Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Scenes": {
+      "main": [
+        [
+          {
+            "node": "Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Image": {
+      "main": [
+        [
+          {
+            "node": "Split Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Images": {
+      "main": [
+        [
+          {
+            "node": "IF Voiceover",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Voiceover": {
+      "main": [
+        [
+          {
+            "node": "Generate TTS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Audio Branch",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Generate TTS": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio": {
+      "main": [
+        [
+          {
+            "node": "Merge Audio Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Audio Branch": {
+      "main": [
+        [
+          {
+            "node": "Build Creatomate Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Creatomate Source": {
+      "main": [
+        [
+          {
+            "node": "Creatomate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate": {
+      "main": [
+        [
+          {
+            "node": "Wait For Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Render": {
+      "main": [
+        [
+          {
+            "node": "Download MP4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download MP4": {
+      "main": [
+        [
+          {
+            "node": "5. Final Dup Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Final Dup Check": {
+      "main": [
+        [
+          {
+            "node": "Parse Final Dup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Final Dup": {
+      "main": [
+        [
+          {
+            "node": "IF Final Dup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Final Dup": {
+      "main": [
+        [
+          {
+            "node": "Log Final Duplicate Blocked",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YouTube Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube Upload": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e3aced7f-9cd4-404b-bcfc-e1f70bdc6b30",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9fd1a24e1f8f3f79b27cf9057bb80cfa871d4884c683341d118cae9836773bdb"
+  },
+  "nodeGroups": [],
+  "id": "a1oaZXg1litfb6zK",
+  "tags": []
+}

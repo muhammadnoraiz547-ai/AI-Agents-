@@ -1,0 +1,940 @@
+{
+  "name": "Al Real Estate Email Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "inputText": "={{ $json.subject }}\n{{ $json.emailBody }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Property Inquiry",
+              "description": "Questions about specific property listings, features, price, availability of a house/apartment"
+            },
+            {
+              "category": "Showing Request",
+              "description": "Requests to schedule/reschedule/cancel a property viewing or appointment"
+            },
+            {
+              "category": "Pricing/Market Data",
+              "description": "Questions about market trends, property valuation, price comparisons, investment data"
+            },
+            {
+              "category": "General Question",
+              "description": "General questions about the agency, services, process, or anything not covered above"
+            }
+          ]
+        },
+        "options": {
+          "multiClass": false
+        }
+      },
+      "id": "8b772d57-2088-4f16-9009-ccd12e811e5b",
+      "name": "Understand Intent",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [
+        -4544,
+        2112
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "f229ccd0-e0bb-4798-9d2a-ab53248b08fd",
+      "name": "Intent Classifier Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -4544,
+        2384
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "EnnTVYUJITBroTMb",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer email:\n{{ $('Extract Email Details1').item.json.emailBody }}\n\nMatching properties found:\n{{ JSON.stringify($json) }}\n\nWrite a helpful, friendly reply addressing the customer's property inquiry using the matched listings above.",
+        "options": {}
+      },
+      "id": "6485f69c-2e0e-46b9-ac7f-88f7f62ef95b",
+      "name": "Generate AI Response",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -3504,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "ff335bb3-e0ea-4fe2-bf91-a1aef5d3f3a6",
+      "name": "Response Model 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3504,
+        1696
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "EnnTVYUJITBroTMb",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "replySubject",
+              "type": "string",
+              "value": "=Re: {{ $('Extract Email Details1').item.json.subject }}"
+            },
+            {
+              "id": "p2",
+              "name": "replyBody",
+              "type": "string",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "id": "p3",
+              "name": "intent",
+              "type": "string",
+              "value": "Property Inquiry"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "92ead1aa-3f26-499b-a507-21ebdfdfee62",
+      "name": "Personalize Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3152,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "value": "primary"
+        },
+        "options": {}
+      },
+      "id": "be6c53a9-3c17-4443-9e96-4e54fc1ec95f",
+      "name": "Check Availability",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -3728,
+        1920
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "sHF86D5fAkbwTsfp",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer email:\n{{ $('Extract Email Details1').item.json.emailBody }}\n\nAvailable slots:\n{{ JSON.stringify($json) }}\n\nWrite a friendly reply proposing viewing times based on the availability above.",
+        "options": {}
+      },
+      "id": "858e3899-4b7b-4a2a-bd3e-5ddf3a233331",
+      "name": "Generate AI Response1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -3504,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "d6b82362-c90d-46e4-8bbf-31ff82f15442",
+      "name": "Response Model 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3424,
+        2032
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "EnnTVYUJITBroTMb",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "replySubject",
+              "type": "string",
+              "value": "=Re: {{ $('Extract Email Details1').item.json.subject }}"
+            },
+            {
+              "id": "p2",
+              "name": "replyBody",
+              "type": "string",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "id": "p3",
+              "name": "intent",
+              "type": "string",
+              "value": "Showing Request"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b4ae263a-92fd-41d0-b933-1dc696c815e0",
+      "name": "Personalize Response1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3152,
+        1920
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer email:\n{{ $('Extract Email Details1').item.json.emailBody }}\n\nMarket data:\n{{ JSON.stringify($json) }}\n\nWrite a reply explaining pricing/market info clearly and professionally.",
+        "options": {}
+      },
+      "id": "2f203565-6e26-4b4a-9341-668da6846767",
+      "name": "Generate AI Response2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -3504,
+        2208
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "db6e3b41-b14f-481c-9c89-72768e71ef1f",
+      "name": "Response Model 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3424,
+        2432
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "EnnTVYUJITBroTMb",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "replySubject",
+              "type": "string",
+              "value": "=Re: {{ $('Extract Email Details1').item.json.subject }}"
+            },
+            {
+              "id": "p2",
+              "name": "replyBody",
+              "type": "string",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "id": "p3",
+              "name": "intent",
+              "type": "string",
+              "value": "Pricing/Market Data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a7d0177f-ff56-4dfb-a802-add043741728",
+      "name": "Personalize Response2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3152,
+        2320
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer email:\n{{ $('Extract Email Details1').item.json.emailBody }}\n\nKnowledge base results:\n{{ JSON.stringify($json) }}\n\nWrite a helpful, general reply using the info above; if nothing relevant, answer politely from general agency knowledge.",
+        "options": {}
+      },
+      "id": "2336a573-dad6-4346-9a3a-4c3f5efb751b",
+      "name": "Generate AI Response3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -3504,
+        2592
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "ebeab043-a69b-4d14-8572-fa926c96d658",
+      "name": "Response Model 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3504,
+        2752
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "EnnTVYUJITBroTMb",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "replySubject",
+              "type": "string",
+              "value": "=Re: {{ $('Extract Email Details1').item.json.subject }}"
+            },
+            {
+              "id": "p2",
+              "name": "replyBody",
+              "type": "string",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "id": "p3",
+              "name": "intent",
+              "type": "string",
+              "value": "General Question"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d7190994-28f7-409b-abd8-20b065748e4a",
+      "name": "Personalize Response3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3152,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Extract Email Details1').item.json.senderEmail }}",
+        "subject": "={{ $json.replySubject }}",
+        "message": "={{ $json.replyBody }}",
+        "options": {}
+      },
+      "id": "0534535f-6b02-4285-bb27-34de5df9a1cd",
+      "name": "Send Email Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -2144,
+        2144
+      ],
+      "webhookId": "eba3e7a3-ca2c-4bcd-92c6-5d142c58f9ef",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PBU9LenxOte8a5w0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw",
+          "mode": "list",
+          "cachedResultName": "properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1807299179,
+          "mode": "list",
+          "cachedResultName": "logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit#gid=1807299179"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('Asia/Karachi').toISO() }}",
+            "Email Address": "=\n{{ $('Extract Email Details1').item.json.senderEmail }}",
+            "Intent": "={{ $('Personalize Response3').item.json.intent }}",
+            "Property ID": "={{ $json.propertyId || '' }}",
+            "Response Summary": "={{ $('Personalize Response3').item.json.replyBody }}",
+            "Status": "Sent"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Property ID",
+              "displayName": "Property ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Response Summary",
+              "displayName": "Response Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "12bbf880-6840-4a87-a289-70fcdd3b3450",
+      "name": "Log & Store Interaction",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1872,
+        2144
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "id": "e9ea0571-ee28-4d4a-b114-244da305c16f",
+      "name": "New Email Received1",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -5104,
+        2144
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PBU9LenxOte8a5w0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "senderEmail",
+              "type": "string",
+              "value": "={{ $json.from.value[0].address }}"
+            },
+            {
+              "id": "e2",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "id": "e3",
+              "name": "emailBody",
+              "type": "string",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "id": "e4",
+              "name": "threadId",
+              "type": "string",
+              "value": "={{ $json.threadId }}"
+            },
+            {
+              "id": "e5",
+              "name": "messageId",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6beca07-86b5-4013-9bfa-1da56da57738",
+      "name": "Extract Email Details1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4880,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw",
+          "mode": "list",
+          "cachedResultName": "properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3712,
+        1552
+      ],
+      "id": "45aa7e06-e576-46d0-85ce-74cfd78f3b3d",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw",
+          "mode": "list",
+          "cachedResultName": "properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 796804044,
+          "mode": "list",
+          "cachedResultName": "market data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit#gid=796804044"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3728,
+        2320
+      ],
+      "id": "55f32fc0-7ba5-4ef2-a7a3-ff32e3bfe709",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw",
+          "mode": "list",
+          "cachedResultName": "properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1885057200,
+          "mode": "list",
+          "cachedResultName": "knowledge-base",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Y29bbeM4rJx6FkwwKcdwQMlls09M2qfG7mUdLGaEvZw/edit#gid=1885057200"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3728,
+        2720
+      ],
+      "id": "d7acb830-3c78-4a72-8cc3-09aab6993071",
+      "name": "knowledge abse lookup",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XyaPYHoOuoIkWLdQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Intent Classifier Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Understand Intent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Understand Intent": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "knowledge abse lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Model 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Personalize Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize Response": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Availability": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Model 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate AI Response1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response1": {
+      "main": [
+        [
+          {
+            "node": "Personalize Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize Response1": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Model 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate AI Response2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response2": {
+      "main": [
+        [
+          {
+            "node": "Personalize Response2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize Response2": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Model 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate AI Response3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response3": {
+      "main": [
+        [
+          {
+            "node": "Personalize Response3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize Response3": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Reply": {
+      "main": [
+        [
+          {
+            "node": "Log & Store Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Email Received1": {
+      "main": [
+        [
+          {
+            "node": "Extract Email Details1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email Details1": {
+      "main": [
+        [
+          {
+            "node": "Understand Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "knowledge abse lookup": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "443d459b-2cfa-4419-99a8-8ec40c312066",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7ac927fd6729cb7c986104663781029f868887749f7b3e56e365e50e3214cc18"
+  },
+  "nodeGroups": [],
+  "id": "ZZcs3qa9lLoFBcuW",
+  "tags": []
+}

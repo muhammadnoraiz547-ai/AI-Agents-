@@ -1,0 +1,384 @@
+{
+  "name": "Weekly Management Report-4",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "00d81c83-1762-46ec-b045-356efd92d2c7",
+      "name": "Schedule Trigger - Monday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -192,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 541436557,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=541436557"
+        },
+        "options": {}
+      },
+      "id": "2cd55ed3-da2a-47ca-b5f6-03d7eb773ddb",
+      "name": "Fetch Employees",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        16,
+        176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 327671811,
+          "mode": "list",
+          "cachedResultName": "Leave_Requests",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=327671811"
+        },
+        "options": {}
+      },
+      "id": "be8b7a6c-fd5d-4d00-a4f5-c98f9c46ddc0",
+      "name": "Fetch Leave Requests",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        16,
+        336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1954314166,
+          "mode": "list",
+          "cachedResultName": "Tickets",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1954314166"
+        },
+        "options": {}
+      },
+      "id": "823fe3c1-4560-412a-a86e-dea2469aec2b",
+      "name": "Fetch Tickets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        16,
+        496
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U",
+          "mode": "list",
+          "cachedResultName": "HR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1971707973,
+          "mode": "list",
+          "cachedResultName": "Approvals",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oDeHt_SIhbcjJdwZIsAxArcEm4fp-YO18Sgbvk4wm5U/edit#gid=1971707973"
+        },
+        "options": {}
+      },
+      "id": "54b5052a-13f3-4982-8231-9b1b7e23a904",
+      "name": "Fetch Approvals",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        16,
+        656
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XasGAm6sqalL5O3U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "id": "88eacec6-5520-4ad9-ac9d-20e4cec5afe1",
+      "name": "Merge Weekly Data Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        336,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst employees = $('Fetch Employees').all().map(i => i.json);\nconst leaveRequests = $('Fetch Leave Requests').all().map(i => i.json);\nconst tickets = $('Fetch Tickets').all().map(i => i.json);\nconst approvals = $('Fetch Approvals').all().map(i => i.json);\n\nconst oneWeekAgo = Date.now() - 7 * 24 * 3600000;\nconst isThisWeek = (dateStr) => {\n  const t = new Date(dateStr).getTime();\n  return !isNaN(t) && t >= oneWeekAgo;\n};\n\nconst weeklyLeaveRequests = leaveRequests.filter(r => isThisWeek(r.created_at));\nconst weeklyTickets = tickets.filter(t => isThisWeek(t.created_at));\n\nconst kpis = {\n  total_employees: employees.length,\n  total_leave_requests: weeklyLeaveRequests.length,\n  approved_leaves: weeklyLeaveRequests.filter(r => r.status === 'Approved').length,\n  rejected_leaves: weeklyLeaveRequests.filter(r => r.status === 'Rejected').length,\n  pending_leaves: weeklyLeaveRequests.filter(r => r.status === 'Pending').length,\n  total_tickets: weeklyTickets.length,\n  open_tickets: weeklyTickets.filter(t => t.status === 'Open').length,\n  resolved_tickets: weeklyTickets.filter(t => t.status === 'Resolved').length,\n  high_priority_tickets: weeklyTickets.filter(t => t.priority === 'high').length,\n  critical_tickets: weeklyTickets.filter(t => t.priority === 'critical').length,\n  sla_escalations: approvals.filter(a => String(a.escalated).toLowerCase() === 'true' && isThisWeek(a.escalated_at)).length\n};\nreturn [{ json: kpis }];\n"
+      },
+      "id": "9b1af82f-6434-40f4-9b2a-f038a2f3c20e",
+      "name": "Calculate KPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.2,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an executive assistant summarizing weekly HR/IT operations metrics for management. Summarize ONLY the numeric data provided below - do not invent or estimate any additional metrics. Write 3-5 concise sentences highlighting notable trends (e.g. high pending leave counts, SLA escalations, critical tickets) in a professional tone suitable for a management email.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": 'Weekly KPIs: ' + JSON.stringify($json)\n    }\n  ]\n} }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "f5879c04-6355-41f4-8c77-39ae20e3c353",
+      "name": "AI Management Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        336
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mhOQeSt5BsgcvVbG",
+          "name": "Header Auth account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst kpis = $('Calculate KPIs').first().json;\nlet summary = 'Summary unavailable.';\ntry { summary = $input.first().json.choices[0].message.content; } catch (e) {}\n\nconst row = (label, value) => `<tr><td style=\"padding:6px 12px;border-bottom:1px solid #eee;\">${label}</td><td style=\"padding:6px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:600;\">${value}</td></tr>`;\n\nconst html = `\n<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;\">\n  <h2 style=\"color:#2c3e50;\">Weekly Management Report</h2>\n  <p style=\"color:#555;\">${summary}</p>\n  <table style=\"width:100%;border-collapse:collapse;margin-top:16px;\">\n    ${row('Total Employees', kpis.total_employees)}\n    ${row('Total Leave Requests (7d)', kpis.total_leave_requests)}\n    ${row('Approved Leaves', kpis.approved_leaves)}\n    ${row('Rejected Leaves', kpis.rejected_leaves)}\n    ${row('Pending Leaves', kpis.pending_leaves)}\n    ${row('Total Tickets (7d)', kpis.total_tickets)}\n    ${row('Open Tickets', kpis.open_tickets)}\n    ${row('Resolved Tickets', kpis.resolved_tickets)}\n    ${row('High Priority Tickets', kpis.high_priority_tickets)}\n    ${row('Critical Tickets', kpis.critical_tickets)}\n    ${row('SLA Escalations', kpis.sla_escalations)}\n  </table>\n</div>`;\nreturn [{ json: { html_body: html } }];\n"
+      },
+      "id": "14094521-53f5-40f8-a146-1a652f7ba66a",
+      "name": "Build HTML Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=Weekly HR/IT Operations Report - {{new Date().toISOString().slice(0,10)}}",
+        "message": "={{$json.html_body}}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "0704ba2c-6004-4353-a89e-3ef143dd0a83",
+      "name": "Send Weekly Report Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        336
+      ],
+      "webhookId": "58e16a44-9cab-4903-8c72-6134bd92d0ab",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1zPbx3lkRrcDwiwk",
+          "name": "Gmail account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger - Monday": {
+      "main": [
+        [
+          {
+            "node": "Fetch Employees",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Leave Requests",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Tickets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Approvals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Employees": {
+      "main": [
+        [
+          {
+            "node": "Merge Weekly Data Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leave Requests": {
+      "main": [
+        [
+          {
+            "node": "Merge Weekly Data Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch Tickets": {
+      "main": [
+        [
+          {
+            "node": "Merge Weekly Data Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Fetch Approvals": {
+      "main": [
+        [
+          {
+            "node": "Merge Weekly Data Sources",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge Weekly Data Sources": {
+      "main": [
+        [
+          {
+            "node": "Calculate KPIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate KPIs": {
+      "main": [
+        [
+          {
+            "node": "AI Management Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Management Summary": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Email": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "081d715c-e1ed-421b-97f7-e45346784351",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f117c48b5ac7fa56eb21cf2c3e07d3d95eb84ac376ecaefe63935a1d0499838"
+  },
+  "nodeGroups": [],
+  "id": "Ev2ZGJHNO7hnhiaX",
+  "tags": []
+}

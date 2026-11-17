@@ -1,0 +1,697 @@
+{
+  "name": "LinkedIn Lead Discovery Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "a83e401b-0a8f-490f-a4ce-70c183d860cd",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1696,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appU8LWe7aIj8Mypv",
+          "mode": "list",
+          "cachedResultName": "Leads-linkdin",
+          "cachedResultUrl": "https://airtable.com/appU8LWe7aIj8Mypv"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblwQGW5EWPOHzttb",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appU8LWe7aIj8Mypv/tblwQGW5EWPOHzttb"
+        },
+        "options": {}
+      },
+      "id": "c0431930-6138-413f-b3ab-d41c7c2da0f5",
+      "name": "Get Existing Leads",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1504,
+        144
+      ],
+      "options": {},
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ftMgGTJHzEmqFUZI",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "profileUrl",
+              "renameField": true,
+              "outputFieldName": "existingUrls"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4d5ab80-4411-43df-8ace-268aba2ddf83",
+      "name": "Aggregate Existing URLs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appU8LWe7aIj8Mypv",
+          "mode": "list",
+          "cachedResultName": "Leads-linkdin",
+          "cachedResultUrl": "https://airtable.com/appU8LWe7aIj8Mypv"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblaG70CyChgZNUqu",
+          "mode": "list",
+          "cachedResultName": "search criteria",
+          "cachedResultUrl": "https://airtable.com/appU8LWe7aIj8Mypv/tblaG70CyChgZNUqu"
+        },
+        "options": {}
+      },
+      "id": "ceb671e8-1ba8-4833-8996-3dea783cffca",
+      "name": "Get Search Criteria",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1200,
+        320
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ftMgGTJHzEmqFUZI",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingUrls = $('Aggregate Existing URLs').first().json.existingUrls || [];\nconst criteriaRows = $input.all();\n\nreturn criteriaRows.map(item => {\n  const c = item.json;\n\n  const titleParts = (c.jobTitle || '').split(',').map(t => t.trim()).filter(Boolean);\n  const titleBlock = titleParts.length ? `(${titleParts.map(t => `\\\"${t}\\\"`).join(' OR ')})` : '';\n\n  let query = `site:linkedin.com/in ${titleBlock}`.trim();\n  if (c.industry) query += ` \\\"${c.industry}\\\"`;\n  if (c.location) query += ` \\\"${c.location}\\\"`;\n\n  return {\n    json: {\n      criteriaId: c.id || c.recordId || item.json.id || '',\n      jobTitle: c.jobTitle || '',\n      location: c.location || '',\n      industry: c.industry || '',\n      searchQuery: query.trim(),\n      existingUrls\n    }\n  };\n});"
+      },
+      "id": "fd764a71-2660-435c-96c3-356032ddb458",
+      "name": "Build Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const criteriaItems = $input.all();\n\n// ⬇️ apna asal Apify actorId aur apifyToken yahan bharein (env vars n8n Cloud pr code node mein kaam nahi karte)\nconst accounts = [\n  { accountName: \"apify_account_1\", actorId: \"akash9078~linkedin-profile-search-scraper\", apifyToken: \"YOUR_APIFY_API_TOKEN\" }\n];\n\nconst out = [];\nfor (const item of criteriaItems) {\n  const c = item.json;\n  for (const acc of accounts) {\n    out.push({\n      json: {\n        accountName: acc.accountName,\n        actorId: acc.actorId,\n        apifyToken: acc.apifyToken,\n        searchQuery: c.searchQuery,\n        criteriaId: c.criteriaId,\n        jobTitle: c.jobTitle,\n        location: c.location,\n        industry: c.industry,\n        existingUrls: c.existingUrls || []\n      }\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "d1877a8c-6220-4782-8d5a-574178d62424",
+      "name": "Build Apify Account Pool",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/{{$json.actorId}}/run-sync-get-dataset-items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{$json.apifyToken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"query\": $json.searchQuery, \"maxPages\": 5, \"proxyConfiguration\": { \"useApifyProxy\": true, \"apifyProxyGroups\": [\"GOOGLE_SERP\"] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "b381e975-7d93-4f4b-87ec-3d9df8701b25",
+      "name": "Run Apify Actor (Sync)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -624,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6fa08622-8076-4f70-8c17-be67d0746fa8",
+              "leftValue": "={{$json.statusCode}}",
+              "rightValue": 300,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "68c2fd8f-b2ef-470a-9308-93d7e2f6da84",
+      "name": "Run Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -400,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || {};\nconst rawItems = Array.isArray(body) ? body : (body.items || []);\nconst existing = new Set(input.existingUrls || []);\nconst out = [];\n\nfor (const raw of rawItems) {\n  const profileUrl = raw.profileUrl || raw.url || raw.linkedinUrl;\n  if (!profileUrl || existing.has(profileUrl)) continue;\n\n  // Actor sends name + job title combined in \"title\", e.g. \"Shahnawaz - Digital Marketing Manager\"\n  const rawTitle = (raw.title || raw.name || 'Unknown').replace(/[\\u200e\\u200f]/g, '').trim();\n  let fullName = rawTitle;\n  let jobTitle = '';\n  const dashIndex = rawTitle.indexOf(' - ');\n  if (dashIndex !== -1) {\n    fullName = rawTitle.slice(0, dashIndex).trim();\n    jobTitle = rawTitle.slice(dashIndex + 3).trim();\n  }\n\n  out.push({\n    json: {\n      fullName: fullName,\n      jobTitle: jobTitle,\n      company: '',\n      profileUrl: profileUrl,\n      email: '',\n      source: input.accountName,\n      searchQuery: input.searchQuery,\n      matchedLocation: input.location || '',\n      matchedIndustry: input.industry || '',\n      scrapedAt: raw.scrapedAt || new Date().toISOString()\n    }\n  });\n  existing.add(profileUrl);\n}\n\nreturn out;"
+      },
+      "id": "22b75a73-42f6-4cab-b199-15f06b69d060",
+      "name": "Normalize & Dedupe Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appU8LWe7aIj8Mypv",
+          "mode": "list",
+          "cachedResultName": "Leads-linkdin",
+          "cachedResultUrl": "https://airtable.com/appU8LWe7aIj8Mypv"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblwQGW5EWPOHzttb",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appU8LWe7aIj8Mypv/tblwQGW5EWPOHzttb"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "fullName",
+              "displayName": "fullName",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "jobTitle",
+              "displayName": "jobTitle",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "profileUrl",
+              "displayName": "profileUrl",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "searchQuery",
+              "displayName": "searchQuery",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "scrapedAt",
+              "displayName": "scrapedAt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "matchedIndustry",
+              "displayName": "matchedIndustry",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "matchedLocation",
+              "displayName": "matchedLocation",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f2163cb6-d5cf-4fb6-9ce1-28975bdffa06",
+      "name": "Save New Lead",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        240
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ftMgGTJHzEmqFUZI",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "577c278d-f6d3-4ea3-b49b-8d63debc7828",
+      "name": "Aggregate New Leads",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        272,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.first().json;\nconst leads = inputJson.newLeads || inputJson.data || [];\n\nconst getField = (l, key) => (l.fields ? l.fields[key] : l[key]) || '';\n\nconst bySource = {};\nfor (const l of leads) {\n  const src = getField(l, 'source') || 'unknown';\n  bySource[src] = (bySource[src] || 0) + 1;\n}\nconst breakdown = Object.entries(bySource).map(([k, v]) => `• ${k}: ${v}`).join(\"\\n\") || \"No new leads this run.\";\nconst sample = leads.slice(0, 5).map(l => `— ${getField(l,'fullName')} (${getField(l,'jobTitle')} @ ${getField(l,'company')})`).join(\"\\n\");\n\nreturn [{\n  json: {\n    summary: `🚀 **Lead Scraper Run Complete**\\n\\nNew leads found: **${leads.length}**\\n\\n**By account:**\\n${breakdown}\\n\\n**Sample:**\\n${sample || \"—\"}`\n  }\n}];"
+      },
+      "id": "a3cec707-a2df-45ad-9afc-0cede1196b1a",
+      "name": "Build Summary Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c43c000-c128-40ba-9b07-3910421b8624",
+              "name": "account",
+              "type": "string",
+              "value": "={{$json.accountName}}"
+            },
+            {
+              "id": "7eda01ee-7cd2-4ad6-8097-4f52c5a46f6a",
+              "name": "statusCode",
+              "type": "number",
+              "value": "={{$json.statusCode}}"
+            },
+            {
+              "id": "0a77de89-011c-4a01-a0dd-ee286e6887f8",
+              "name": "errorMessage",
+              "type": "string",
+              "value": "={{$json.body?.error || 'Unknown Apify error'}}"
+            },
+            {
+              "id": "adaf9bba-1397-4569-9428-050b4224dc8d",
+              "name": "occurredAt",
+              "type": "string",
+              "value": "={{$now.toISO()}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e839f58d-5cd3-469f-94d8-97da8c5ddf03",
+      "name": "Build Error Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        432
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "49df50a1-50c8-4fa7-9950-34c468969e9c",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "={{$json.summary}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "83fabe79-ecd9-4676-af2f-842bf4751028",
+      "name": "Post Success Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        240
+      ],
+      "webhookId": "1b6df9db-98c3-4063-9574-6babe51123b1",
+      "credentials": {
+        "telegramApi": {
+          "id": "6JcKQrwTwQtrle1K",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "=Warning: Apify account {{$json.account}} failed (status {{$json.statusCode}}): {{$json.errorMessage}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "20b5f001-fc3a-429d-bdcf-1e01492b22b9",
+      "name": "Alert - Scraper Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        432
+      ],
+      "webhookId": "0ed0d8ee-553b-4434-84eb-5cc31ecd38e4",
+      "credentials": {
+        "telegramApi": {
+          "id": "6JcKQrwTwQtrle1K",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "=Workflow {{$json.workflow.name}} crashed.\\nExecution: {{$json.execution.id}}\\nError: {{$json.execution.error?.message}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "ff59eaf1-9898-45d8-a936-a3d5cb8dcef1",
+      "name": "Alert - Workflow Crashed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -496,
+        704
+      ],
+      "webhookId": "0fd26cbb-0543-4fa7-a323-c4506cb0437a",
+      "credentials": {
+        "telegramApi": {
+          "id": "6JcKQrwTwQtrle1K",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Leads": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Existing URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Existing URLs": {
+      "main": [
+        [
+          {
+            "node": "Get Search Criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Search Criteria": {
+      "main": [
+        [
+          {
+            "node": "Build Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Build Apify Account Pool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Apify Account Pool": {
+      "main": [
+        [
+          {
+            "node": "Run Apify Actor (Sync)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Apify Actor (Sync)": {
+      "main": [
+        [
+          {
+            "node": "Run Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Successful?": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Dedupe Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Dedupe Leads": {
+      "main": [
+        [
+          {
+            "node": "Save New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New Lead": {
+      "main": [
+        [
+          {
+            "node": "Aggregate New Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate New Leads": {
+      "main": [
+        [
+          {
+            "node": "Build Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Report": {
+      "main": [
+        [
+          {
+            "node": "Post Success Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Record": {
+      "main": [
+        [
+          {
+            "node": "Alert - Scraper Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Alert - Workflow Crashed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b01e41d7-f936-4a55-ab70-4185914c3168",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7345132f526c68b67a710a0c3bda45450b1bb8e5ef942acc48d2d534c1490c86"
+  },
+  "nodeGroups": [],
+  "id": "l0962tD6OR1B4WCb",
+  "tags": []
+}

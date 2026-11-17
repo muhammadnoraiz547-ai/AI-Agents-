@@ -1,0 +1,530 @@
+{
+  "name": "Intelligent Customer Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "id": "311c0cc9-799d-4d16-a8eb-69d2739b751d",
+      "name": "📧 Support Email Received",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "position": [
+        1984,
+        944
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "a173770e-3d7c-4b83-ad6c-77262fe9001c",
+      "name": "🤖 OpenAI Model (Extractor)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        2240,
+        1216
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1bqNXG-0S1Y9nwRMBxDZJfH_8zIiAdONHh1NaurpBr84",
+          "mode": "list",
+          "cachedResultName": "zeiss_primotech_support",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1bqNXG-0S1Y9nwRMBxDZJfH_8zIiAdONHh1NaurpBr84/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 611510638,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1bqNXG-0S1Y9nwRMBxDZJfH_8zIiAdONHh1NaurpBr84/edit#gid=611510638"
+        },
+        "options": {}
+      },
+      "id": "d346c1e4-6150-4d84-a6b4-6c348c93bc73",
+      "name": "📊 Historical Support Cases",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2656,
+        640
+      ],
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aHzk3HG8HO9z5V3C",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "a6c776dc-d788-45bc-b65b-4ddd3d0aa4c5",
+      "name": "📋 Aggregate Support Data",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        2880,
+        640
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "https://drive.google.com/file/d/1PKhBufjNiKOZGbc50WNYL8966uzmL2EB/view?usp=drive_link",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "652d83b3-04ae-48bc-a628-360b59dde5ce",
+      "name": "📚 Download Product Manual",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        2672,
+        832
+      ],
+      "typeVersion": 3,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Znvk4wIBu02i9dYK",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "ee58709c-dadf-4fe8-9ad2-db365e3916fb",
+      "name": "📄 Extract PDF Content",
+      "type": "n8n-nodes-base.extractFromFile",
+      "position": [
+        2864,
+        832
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "https://run.mocky.io/v3/d8892875-55d6-449d-bab3-3cb7a7b419c0",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "073a1866-f04b-48fe-83b7-e1e9e0bcb713",
+      "name": "🏢 Check ERP System",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2288,
+        720
+      ],
+      "typeVersion": 3,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=This GPT acts as an expert customer support agent designed to draft thoughtful, accurate responses to customer queries. It takes in customer questions and leverages internal product documentation and a history of previously answered queries to prewrite complete and contextually appropriate replies. \n\nThe GPT uses the full content of:\n\n1. the uploaded Primotech Instruction Manual\n2. a CSV dataset of historical customer questions: {{ $('📋 Aggregate Support Data').item.json.data.toJsonString() }}\n3. Customer's original query: {{ \n$('Chat Message Received').isExecuted && $('Chat Message Received').last().json.chatInput;\n$('📧 Support Email Received') && $('📧 Support Email Received').item.json.snippet;\n$('When clicking ‘Execute workflow’').isExecuted && $('When clicking ‘Execute workflow’').item.json.snippet\n}}\n\nand answers related to ZEISS Primotech microscopes.\n\nThe assistant aims to reduce agent workload by anticipating common follow-up questions, referencing appropriate product knowledge, and maintaining a polite, clear, and supportive tone. It is optimized for high response accuracy and minimal ambiguity.\n\nThe assistant never performs web searches. When the available context is insufficient, it presents a warning for the human agent instead of generating a full response.\n\nAll complete responses must follow this exact structure:\n- Start with a proper salutation: \"Dear [Customer's Last Name],\" or \"Dear Customer,\" if name is not available.\n- Then: \"Thank you for your message.\"\n- Provide clear, helpful response body with troubleshooting steps if needed.\n- If the request involves a spare part, include relevant information from: {{ $json.inventory.toJsonString() }}\n- End with: \"If you have any further questions, feel free to contact us. You can also visit our [Help Page](http://www.zeiss.de). We wish you a great day!\"\n- Close with: \"Best regards,<br>ZEISS Primotech Support Team\"\n\nUse professional, friendly, and easy-to-understand English language."
+      },
+      "id": "f9834f8d-728d-4851-a5e2-1b350e215746",
+      "name": "🤖 Generate Customer Response",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        2992,
+        1088
+      ],
+      "typeVersion": 1.6,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "3c95bfdf-f251-469c-91c0-bfdc3fb49ecb",
+      "name": "🤖 OpenAI Model (Generator)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        3232,
+        944
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2473fa5c-8b22-479c-95e7-583d4adb934f",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              },
+              "leftValue": "={{ $('📧 Support Email Received').isExecuted }}",
+              "rightValue": "true"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4cf7381d-0b16-41fe-a1c5-dca88fbc3f7f",
+      "name": "📧 Email or Chat?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        3344,
+        1088
+      ],
+      "typeVersion": 2.2,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "Customer Support Response - Approval Required",
+        "message": "=A customer support response has been generated and requires your approval:\n\n**Customer Query**: \n{{ \n$('Chat Message Received').isExecuted ?? $('Chat Message Received').last().json.chatInput\n$('📧 Support Email Received').isExecuted ?? $('📧 Support Email Received').item.json.snippet \n$('When clicking ‘Execute workflow’').isExecuted ?? $('When clicking ‘Execute workflow’').item.json.snippet\n}}\n\n**Generated Response**:\n{{ $json.text }}\n\nPlease review and approve/reject this response.",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "id": "c65cee9a-ff4c-4d81-b131-33362411905f",
+      "name": "📧 Request Approval (Email)",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        3568,
+        720
+      ],
+      "webhookId": "7e79cf64-9f20-4968-9bca-3f4dca48ec4c",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=={{ \n  $('📧 Support Email Received').isExecuted \n    ? $('📧 Support Email Received').item.json.From \n    : \"muhammadnoraiz547@gmail.com\"   // ya jo bhi test email hai\n}}",
+        "subject": "Re: Your Support Request",
+        "message": "={{ $('🤖 Generate Customer Response').item.json.text }}",
+        "options": {}
+      },
+      "id": "d3534deb-4aba-4007-bc2c-ce8a5bf44f50",
+      "name": "📤 Send Response to Customer",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        3888,
+        720
+      ],
+      "webhookId": "c994c7a5-5edb-4167-81dd-22e33625450a",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "409c228d-783f-4e7f-aa47-f0271d8409f8",
+              "name": "text",
+              "type": "string",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3896ab7a-86b4-408e-ab11-948a99402326",
+      "name": "📝 Format Chat Response",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3584,
+        1104
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f719a15e-a94a-40cd-afc6-99a19d0142b6",
+      "name": "Chat Message Received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        1968,
+        1152
+      ],
+      "webhookId": "3ec1feb8-fc70-4e24-9370-debc47defe81",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.chatInput ? $json.chatInput : $json.snippet }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"required\": [\"category\", \"urgency\", \"sentiment\", \"keywords\", \"productIdentifiers\", \"customerInfo\", \"requiredAction\"],\n  \"properties\": {\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\"technical\", \"billing\", \"sales\", \"returns\", \"general\"],\n      \"description\": \"The primary category of the customer request\"\n    },\n    \"urgency\": {\n      \"type\": \"string\",\n      \"enum\": [\"low\", \"medium\", \"high\", \"critical\"],\n      \"description\": \"How time-sensitive the request is\"\n    },\n    \"sentiment\": {\n      \"type\": \"string\",\n      \"enum\": [\"positive\", \"neutral\", \"negative\", \"very_negative\"],\n      \"description\": \"The emotional tone of the customer's message\"\n    },\n    \"keywords\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Key terms extracted from the request for searching knowledge base and ERP\"\n    },\n    \"productIdentifiers\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"type\": {\n            \"type\": \"string\",\n            \"enum\": [\"model\", \"serial\", \"part\"]\n          },\n          \"value\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"description\": \"Any product numbers, models, or parts mentioned in the request\"\n    },\n    \"customerInfo\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"firstName\": {\n          \"type\": \"string\"\n        },\n        \"lastName\": {\n          \"type\": \"string\"\n        },\n        \"customerId\": {\n          \"type\": \"string\",\n          \"description\": \"CRM Customer Id\"\n        },\n        \"mentionsCompetitor\": {\n          \"type\": \"boolean\",\n          \"description\": \"Customer references a competitor product or service\"\n        }\n      }\n    },\n    \"requiredAction\": {\n      \"type\": \"string\",\n      \"enum\": [\"information\", \"replacement\", \"refund\", \"repair\", \"callback\", \"escalation\"],\n      \"description\": \"The primary action needed to resolve the customer's request\"\n    }\n  }}",
+        "options": {}
+      },
+      "id": "2c4cd00a-fb68-4552-81a4-94f5ca394c60",
+      "name": "AI Information Extractor",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [
+        2224,
+        1024
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1cf96aa3-dcb3-4cdd-972f-bfe8790ee59b",
+              "name": "inventory",
+              "value": "{   \"part\": \"Objective Lens 40x\",   \"price\": \"245.50\",   \"availability\": \"In Stock\",   \"delivery\": \"2-3 days\" }",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2784,
+        1088
+      ],
+      "id": "f917cb51-eb7a-4e33-b23d-4a266c4795a8",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "📧 Email or Chat?": {
+      "main": [
+        [
+          {
+            "node": "📧 Request Approval (Email)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📝 Format Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Message Received": {
+      "main": [
+        [
+          {
+            "node": "AI Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏢 Check ERP System": {
+      "main": [
+        []
+      ]
+    },
+    "AI Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "📊 Historical Support Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Extract PDF Content": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Aggregate Support Data": {
+      "main": [
+        [
+          {
+            "node": "📚 Download Product Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Support Email Received": {
+      "main": [
+        [
+          {
+            "node": "AI Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📚 Download Product Manual": {
+      "main": [
+        [
+          {
+            "node": "📄 Extract PDF Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Historical Support Cases": {
+      "main": [
+        [
+          {
+            "node": "📋 Aggregate Support Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Request Approval (Email)": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Response to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 OpenAI Model (Extractor)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 OpenAI Model (Generator)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🤖 Generate Customer Response",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Generate Customer Response": {
+      "main": [
+        [
+          {
+            "node": "📧 Email or Chat?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "🤖 Generate Customer Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2e6f4b8e-8568-44c9-9780-19bf0e4f5ff7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6663fb0ceae351519fb7113786d61d371bf68fe6df92a95cc475ad605725fd5d"
+  },
+  "id": "Jo9YQSyvIgpO6Zdo",
+  "tags": []
+}

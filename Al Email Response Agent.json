@@ -1,0 +1,1193 @@
+{
+  "name": "Al Email Response Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "=everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false,
+          "labelIds": [
+            "INBOX"
+          ]
+        }
+      },
+      "id": "4ce997b6-1b9d-4805-b2c1-be53ca5c9ae6",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "position": [
+        -3424,
+        224
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "=From: {{ $json.From }}\nSubject: {{ $json.Subject }}\nEmail body: {{ $json.snippet }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Sales/Leads/Inquiries",
+              "description": "Any email about new inquiries, booking calls, interested leads. This is for sales/inquiries/leads"
+            },
+            {
+              "category": "Clients/Active Projects",
+              "description": "Any email that's active client communication. Can be project updates, feedback, deliverables etc.\n\n"
+            },
+            {
+              "category": "Reports/Results",
+              "description": "Any email about Performance updates (ads, analytics), Campaign reviews, KPIs, dashboards"
+            },
+            {
+              "category": "Billing/Admin",
+              "description": "Any emails about Invoices, contracts, payment confirmations, Tool subscriptions, platform updates etc."
+            },
+            {
+              "category": "Other/Low Priority",
+              "description": "Any emails that don't fit into any of the other categories. Can be Newsletters, cold emails, updates from tools etc. Anything that’s not urgent or important"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "98b817e3-7aea-4b83-9369-896ddfa3c182",
+      "name": "Text Classifier",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "position": [
+        -3136,
+        224
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "598d95fa-adb8-49eb-821c-adefced25556",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -3008,
+        528
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_6383098609006325973"
+        ]
+      },
+      "id": "4a339910-d7b2-4e2a-8b90-0ae6f79f30fe",
+      "name": "Sales / Leads",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2704,
+        -128
+      ],
+      "webhookId": "77607f79-b391-434a-9373-da44715d27c1",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_1085028525603322634"
+        ]
+      },
+      "id": "cf613b14-6e80-4340-836b-8875d804e554",
+      "name": "Client Comm",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2704,
+        48
+      ],
+      "webhookId": "0fa6e86f-0318-46e0-9552-705c87f9e835",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_4139608232296470133"
+        ]
+      },
+      "id": "d423ebcb-caf4-4270-a7f6-7955334f2f71",
+      "name": "Reports / Results",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2704,
+        224
+      ],
+      "webhookId": "c501b3ac-780e-489f-a667-7ac7626b24b6",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_9157764528911248586"
+        ]
+      },
+      "id": "ee98be39-8bb7-44c1-97ce-a9ce95b2448a",
+      "name": "Billing / Admin",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2704,
+        416
+      ],
+      "webhookId": "2b1362a9-2f33-45a6-b6d8-42b55fd66e6a",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_8092655313303559301"
+        ]
+      },
+      "id": "138d4516-4a72-4f2b-9a39-d4ae69e512fe",
+      "name": "Other",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2704,
+        592
+      ],
+      "webhookId": "217b3682-7d0e-451e-96f4-503770f204e1",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $json.id }}"
+      },
+      "id": "da615dcd-af3d-403c-a632-5d293e8b98c3",
+      "name": "Mark as Read3",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2480,
+        592
+      ],
+      "webhookId": "48d3f7f1-fef4-4ce0-930c-b5b6e64a8184",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "\"emailBody\": {\n  \"type\": \"string\",\n  \"description\": \"Plain text email body only. No HTML tags. Use line breaks for formatting.\"\n}"
+      },
+      "id": "ae18902e-7d8f-41ca-898a-d977110d1522",
+      "name": "Structured Output Parser2",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -896,
+        128
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "muhammadnoraiz547@gmail.com",
+          "mode": "list",
+          "cachedResultName": "muhammadnoraiz547@gmail.com"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', `the day before the date the user requested`, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', `the day after the date the user requested`, 'string') }}",
+        "options": {}
+      },
+      "id": "0e339cf3-e2fd-434e-b27e-f37603a62283",
+      "name": "get_events",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "position": [
+        -1120,
+        -256
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "tyBKhXCVXkb0IpfQ",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"emailBody\": {\n      \"type\": \"string\",\n      \"description\": \"Plain text email body only. No HTML tags. No JSON formatting. Just plain text with line breaks.\"\n    },\n    \"reason\": {\n      \"type\": \"string\",\n      \"description\": \"Short explanation for why this response was generated.\"\n    },\n    \"escalate\": {\n      \"type\": \"boolean\",\n      \"description\": \"True if unsure. False if confident.\"\n    },\n    \"knowledgeDatabase\": {\n      \"type\": \"string\",\n      \"description\": \"Summary of facts retrieved from knowledge database.\"\n    }\n  },\n  \"required\": [\n    \"emailBody\",\n    \"reason\",\n    \"escalate\"\n  ]\n}"
+      },
+      "id": "ca0a757c-dbca-42f0-a742-4c5afb42b291",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -864,
+        -384
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here's the email:\n{{ $('Gmail Trigger').item.json.snippet }}\n\nHere's the full thread for context:\n{{ $('Get Thread').item.json.messages.map((msg, index) => `Message ${index + 1}: ${msg.fullBody || msg.snippet}`).join('\\n\\n---\\n\\n') }}\n\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a sales agent at Marketing Ladder (a Marketing Agency). Your job is to handle calendar enquiries via email and reply with either available time slots or booking confirmations. Keep responses short, friendly, and conversational.\n\nTools\nget_events: Use this to check availability for a specific day or time\n\nthink_tool: Use this to decide next steps after getting calendar data\n\nResponse Logic\nIf the email includes a specific date only (no time):\nUse get_events to check availability that day\n\nIf there are open 30-minute slots, casually mention a time range (e.g., “I should be free 9–11AM”) instead of exact times\n\nInclude your calendar link in the messages\n\nExample phrasing:\n\n“How about we set something up for tomorrow? I should be free 9–11AM (Chicago Time).”\n\nIf the email includes both a date and time:\nUse get_events to check if that time is available\n\nIf available:\n\nAssume the meeting is 30 minutes\n\nConfirm the time in a casual tone (e.g., “Yup, I should be good then”)\n\nCreate the calendar event\n\nIf unavailable:\n\nSuggest 2 alternative slots in a natural way (e.g., “I'm tied up then — how about 9:30 or 10:15 instead?”)\n\nOffer your calendar link as well\n\nExtra Rules:\n-If they say “Monday” (or any weekday), treat it as the next upcoming one\n\n-Never mention what’s booked — just say “I'm already tied up then” or “I’m booked at that time”\n\n-Default meeting length is 30 minutes unless stated otherwise\n\n-Always mention the time zone: Chicago Time (CST/CDT)\n\n-Sign off every email as: Abdul\n\n-If they ask for your calendar link, always give: https://cal.com/builtbyabdul/freeconsultation\n\nToday is: {{ $now.format('EEEE') }}, {{ $now.format('yyyy-MM-dd') }}\n\nExample response:\n\n\"\"<p>Thanks for reaching out and your interest in our LinkedIn Growth services!</p>\n\n<p>I'm free for a call tomorrow (Sunday) between 11–11:45AM Chicago Time (CDT). Let me know if that works for you, or feel free to grab a slot that fits your schedule using my calendar here:<br>\n<a href=\"https://cal.com/builtbyabdul/freeconsultation\">https://cal.com/builtbyabdul/freeconsultation</a></p>\n\n<p>Looking forward to chatting!</p>\n\n<p>Best,<br>\nAbdul</p>\"\"\n"
+        }
+      },
+      "id": "4ccd2f83-0012-49cf-a2e1-b7e6edb93100",
+      "name": "Calendar Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1248,
+        -544
+      ],
+      "typeVersion": 1.9
+    },
+    {
+      "parameters": {},
+      "id": "9e5efbee-2007-479a-bea1-1eef77cd5c64",
+      "name": "think_tool",
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "position": [
+        -992,
+        -320
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "fbce52a2-15f5-465f-a5c8-ca20c932b2ec",
+      "name": "OpenAI Chat Model5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -1392,
+        -352
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "cc43ebd1-8cee-404d-81df-71952829a00e",
+      "name": "OpenAI Chat Model7",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -2080,
+        96
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=New email just came in. \n\nHere's the email: \n\n{{ $('Gmail Trigger').item.json.id }}\n\nHere's the thread for context:\n\n{{ $json.messages.map((msg, index) => `Message ${index + 1}: ${msg.fullBody || msg.snippet}`).join('\\n\\n---\\n\\n') }}\n\n\nClassify it. ",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You're a sales inbox manager. \nThe emails coming in from clients are sales-related, either leads/inquiries reaching out to book a call or to get more info. \n\nYour job is to classify each email as a calendar or information email. \n\nCalendar emails are those where the prospect suggests being booked in for a call. \n\nInformation emails are those which require a reply from the sales team to progress further. This could be the prospect asking for information or making an enquiry. "
+            }
+          ]
+        }
+      },
+      "id": "40f84c9d-5e6f-4f6a-9ed1-b6f2e9df5395",
+      "name": "Calendar or Email",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        -2080,
+        -128
+      ],
+      "typeVersion": 1.6
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "get",
+        "threadId": "={{ $json.threadId }}",
+        "simple": false,
+        "options": {}
+      },
+      "id": "564a051e-61c7-49b6-a286-c51acb293392",
+      "name": "Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -2480,
+        -128
+      ],
+      "webhookId": "58a6430a-c9f6-45a5-928b-0a8fc2da78b3",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the Gmail thread data from the previous node\nconst threadData = $input.all();\n\n// Array to store all messages\nconst allMessages = [];\n\n// Function to extract text from message payload\nfunction extractMessageBody(payload) {\n  let body = '';\n  \n  if (payload.body && payload.body.data) {\n    // Single part message\n    body = Buffer.from(payload.body.data, 'base64').toString('utf-8');\n  } else if (payload.parts) {\n    // Multi-part message\n    for (const part of payload.parts) {\n      if (part.mimeType === 'text/plain' && part.body && part.body.data) {\n        body += Buffer.from(part.body.data, 'base64').toString('utf-8');\n      } else if (part.mimeType === 'text/html' && part.body && part.body.data && !body) {\n        // Use HTML if no plain text found\n        body = Buffer.from(part.body.data, 'base64').toString('utf-8');\n      } else if (part.parts) {\n        // Nested parts (recursive)\n        body += extractMessageBody(part);\n      }\n    }\n  }\n  \n  return body.trim();\n}\n\n// Loop through each item from the Gmail node\nfor (const item of threadData) {\n  // Check if messages exist in the item\n  if (item.json.messages && Array.isArray(item.json.messages)) {\n    // Loop through each message in the thread\n    for (let i = 0; i < item.json.messages.length; i++) {\n      const message = item.json.messages[i];\n      \n      // Extract the full message body\n      const fullBody = message.payload ? extractMessageBody(message.payload) : message.snippet || '';\n      \n      if (fullBody) {\n        allMessages.push({\n          messageIndex: i,\n          threadId: item.json.id || 'unknown',\n          snippet: message.snippet || '',\n          fullBody: fullBody,\n          messageId: message.id || 'unknown',\n          subject: message.payload?.headers?.find(h => h.name === 'Subject')?.value || '',\n          from: message.payload?.headers?.find(h => h.name === 'From')?.value || '',\n          date: message.payload?.headers?.find(h => h.name === 'Date')?.value || ''\n        });\n      }\n    }\n  }\n}\n\n// Return all messages as a single item with an array\nreturn [{\n  json: {\n    threadId: threadData[0]?.json?.id || 'unknown',\n    totalMessages: allMessages.length,\n    messages: allMessages\n  }\n}];"
+      },
+      "id": "5d2b7037-2f53-445c-9417-0f2b4ca7f30e",
+      "name": "Get Thread",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -2320,
+        -128
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"calendar\": {\n      \"type\": \"boolean\",\n      \"description\": \"True if Calendar Email and False if Information Email\"\n    }\n  },\n  \"required\": [\n    \"newProspectEmail\"\n  ]\n}"
+      },
+      "id": "62e55426-b171-4561-a9df-21848c45f302",
+      "name": "Structured Output Parser6",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -1904,
+        96
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "925bd4a7-f8a4-4b93-8fb9-47f6a238c89d",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.output.calendar }}",
+                    "rightValue": "Calendar"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Calendar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "a2580899-2579-496c-9f96-ea14fb997c4f",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.output.calendar }}",
+                    "rightValue": "Email"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Email"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "166103eb-6cc6-41de-b144-40b8c5624bf0",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -1760,
+        -128
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=123456"
+      },
+      "id": "380ac266-c8d5-4ede-afeb-e8ddc61f7c3f",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        -1248,
+        224
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "ba70528f-d866-4db2-aea8-539dc69f5caf",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -896,
+        448
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "id": "248f3b50-166d-476b-b03c-7fb275d1bb69",
+      "name": "Supabase Vector Store2",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "position": [
+        -1264,
+        528
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "8oSstYryzavWDyUc",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "748365fb-51d1-4956-929e-48772ed02688",
+      "name": "Embeddings OpenAI2",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        -1248,
+        656
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "380d30d8-ee86-42cc-a02d-2ed7612d1b72",
+      "name": "OpenAI Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -1424,
+        192
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "KnowledgeDatabase",
+        "description": "A list of frequently asked questions and answers and services we provide.",
+        "topK": "=5"
+      },
+      "id": "11c5ea7f-be94-4ff8-94bb-887b02ed342e",
+      "name": "Knowledge Database",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "position": [
+        -1120,
+        288
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "emailType": "html",
+        "message": "={{ $json.output.emailBody }}",
+        "options": {
+          "replyTo": "={{ $('Gmail Trigger').item.json.From.extractEmail() }}",
+          "threadId": "={{ $('Gmail Trigger').item.json.threadId }}"
+        }
+      },
+      "id": "b6836351-4337-44d2-93a8-50cbab0b99e2",
+      "name": "Gmail3",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -656,
+        112
+      ],
+      "webhookId": "fe550c66-938b-47b1-8e44-e3a8a4c81551",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "8c816866-eec9-4c02-a7df-e37a4c1fc89f",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.output.escalate }}",
+              "rightValue": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41cc0890-b1e6-44dd-98a4-13ca6a3757b6",
+      "name": "Escalate?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -880,
+        -32
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here's the email:\n{{ $('Gmail Trigger').item.json.snippet }}\n\nHere's the full thread for context:\n{{ $('Get Thread').item.json.messages.map((msg, index) => `Message ${index + 1}: ${msg.fullBody || msg.snippet}`).join('\\n\\n---\\n\\n') }}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You work in the sales team at Marketing Ladder, a Marketing Agency. Your job is to respond to outbound/inbound emails from prospects.\n\nEmails may include:\n- A reply to a cold email we sent\n- A new inquiry from a prospect\n- A general question about our services\n\nYour steps:\n1. Use the \"knowledge database\" tool (RAG database) to find accurate answers to their question.\n2. Write a clear, human reply that:\n   - Answers their question\n   - Encourages them to book a consultation **if** you see fit (include this link if relevant: https://cal.com/builtbyabdul/freeconsultation)\n\nRules:\n-Never hallucinate/make up stuff. If you don't know the answer or can't find relevant info in your knowledge database, set \"escalate\": true so a human can take over.\n-Sign off every email as Abdul.\n\nCurrent date/time in Chicago (CDT): {{ $now.weekdayLong }}, {{ $now.format('dd LLL yyyy') }} at {{ $now.format('t') }}\n\nExample email:\n\"\"Hey Abdul, I came across your LinkedIn. \nI'm very interested after I checked out your beautifully designed website.\nWhat services do you guys offer? Anything related to LinkedIn? I gotta say, mine is pretty trash\"\"\n\nExample response:\n\"<p>Hey — appreciate you checking out the site, and glad it resonated.</p>\n\n<p>Yes, we offer LinkedIn-focused services. Mainly building out high-converting profiles, content systems that attract leads, and automated outreach funnels. If your profile needs work, we can help fix both the look and the backend strategy.</p>\n\n<p>Happy to walk you through more details over a call if you want. When are you free? Feel free to check my calendar here: <br>\n<a href=\"https://cal.com/builtbyabdul/freeconsultation\">https://cal.com/builtbyabdul/freeconsultation</a></p>\n\n<p>Best,<br>Abdul</p>\"\n"
+        }
+      },
+      "id": "a1ac1331-c38d-4335-bf66-e3cf67269fbe",
+      "name": "Knowledge Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1264,
+        -32
+      ],
+      "typeVersion": 1.9
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Gmail Trigger').item.json.From.extractEmail() }}",
+        "subject": "=re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "emailType": "text",
+        "message": "={{ $json.output.emailBody }}",
+        "options": {
+          "replyTo": "={{ $('Gmail Trigger').item.json.From.extractEmail() }}"
+        }
+      },
+      "id": "35052cca-c606-4ff3-9c58-a18598d810c7",
+      "name": "Send",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        -736,
+        -544
+      ],
+      "webhookId": "4674a08e-4878-4a34-a4f1-bd5e3315ab4b",
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gFCHDZ6EHrFMVQw0",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "123456789",
+        "text": "=📥 New lead: {{ $('Gmail Trigger').item.json.From.split('<')[0].trim() }} \nThey were asking a question. I searched the knowledge database and drafted a reply for you. \nCheck your email!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ea430b7a-697b-48d9-9b7a-6305208c5ba8",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        -448,
+        112
+      ],
+      "webhookId": "aaced721-6777-4eb1-bd9e-288c69abacd2",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "XUNyRqv4h7Lngpf3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "123456789",
+        "text": "=📥 New lead: {{ $('Gmail Trigger').item.json.From.split('<')[0].trim() }} \nThey were asking a question, I searched the knowledge database but I wasn't sure how to respond.\nCheck your email!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "7d87f8b2-295c-49f8-976e-e16811c81fe5",
+      "name": "Telegram2",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        -544,
+        -48
+      ],
+      "webhookId": "0ba8be42-8201-4494-b643-0a56586bfb07",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "XUNyRqv4h7Lngpf3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "=📥 New lead: {{ $('Gmail Trigger').item.json.From.split('<')[0].trim() }} \nThey want to book a call. I checked your calendar and drafted a reply for you. \nCheck your email!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c4ac0089-23fe-4b30-8eb0-151a435f85db",
+      "name": "Inbox Bot",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        -528,
+        -544
+      ],
+      "webhookId": "d00cec86-877d-4176-942a-654ccdf17819",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "XUNyRqv4h7Lngpf3",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail": {
+      "main": [
+        [
+          {
+            "node": "Get Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Other": {
+      "main": [
+        [
+          {
+            "node": "Mark as Read3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail3": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Knowledge Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate?": {
+      "main": [
+        [
+          {
+            "node": "Telegram2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Thread": {
+      "main": [
+        [
+          {
+            "node": "Calendar or Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "think_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales / Leads": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Agent": {
+      "main": [
+        [
+          {
+            "node": "Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Agent": {
+      "main": [
+        [
+          {
+            "node": "Escalate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Sales / Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Client Comm",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reports / Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Billing / Admin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Other",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar or Email": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Database": {
+      "ai_tool": [
+        [
+          {
+            "node": "Knowledge Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Knowledge Database",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Knowledge Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model7": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Calendar or Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store2": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Knowledge Database",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Knowledge Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser6": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Calendar or Email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send": {
+      "main": [
+        [
+          {
+            "node": "Inbox Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Comm": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reports / Results": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Billing / Admin": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9895cf75-2132-4dd4-bf28-9ed06687054a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6663fb0ceae351519fb7113786d61d371bf68fe6df92a95cc475ad605725fd5d"
+  },
+  "id": "ylbNypokzwM06Bw6",
+  "tags": []
+}

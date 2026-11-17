@@ -1,0 +1,625 @@
+{
+  "name": "email agent for cold calling",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Duplicate rows hata do - unique Client_ID se\nconst uniqueRows = [];\nconst seenIds = new Set();\n\nfor (const item of items) {\n  const id = item.json.Client_ID;\n  if (id && id !== '' && !seenIds.has(id)) {\n    seenIds.add(id);\n    uniqueRows.push(item);\n  }\n}\n\nconst totalEmails = uniqueRows.length;\nconst sentSuccessfully = uniqueRows.filter(item => item.json.Status === 'Sent').length;\nconst failed = uniqueRows.filter(item => item.json.Status === 'Failed').length;\nconst successRate = totalEmails > 0 ? ((sentSuccessfully / totalEmails) * 100).toFixed(2) : 0;\n\nreturn [{json: {\n  totalEmails,\n  sentSuccessfully,\n  failed,\n  successRate: successRate + '%'\n}}];"
+      },
+      "id": "68618714-3d7a-4b07-bd8f-395e8fb81c24",
+      "name": "Summary Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2400,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -3328,
+        -336
+      ],
+      "id": "5a85c806-59fa-4255-a4cd-7013d0d01c64",
+      "name": "Schedule Trigger2"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4",
+          "mode": "list",
+          "cachedResultName": "Email leads"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1292726526,
+          "mode": "list",
+          "cachedResultName": "Email Campaign"
+        },
+        "options": {}
+      },
+      "id": "2df07898-5a41-4d63-9def-3eb6d806275b",
+      "name": "Read Recipients from Sheet3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3104,
+        -336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vCqU4SZnhfPpj0vV",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Sent",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "id": "filter1"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d54ca0ba-9a68-425e-b0fd-f701d5f7ad22",
+      "name": "Filter Unsent Only2",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -2896,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "1c94a1d3-530b-42b0-987f-c4995bca9daa",
+      "name": "Loop Each Email2",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2672,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "recipientEmail",
+              "value": "={{ $json.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "recipientName",
+              "value": "={{ $json.Client_Name }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "company",
+              "value": "={{ $json.Company_Name }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "subject",
+              "value": "=How {{ $json.Company_Name }} Can Save 40% Time on Manual Processes | Alienize.io",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "emailBody",
+              "value": "=Hi {{ $json.Client_Name }},\n\nI hope you're having a great day!\n\nI noticed that  {{ $json.Company_Name }}could benefit from AI automation and intelligent process optimization.\n\nHere's what we do at Alienize.io:\n\n- AI Automation - Automate repetitive tasks using n8n, Make, Zapier, and custom workflows\n- Custom AI Agents - Build intelligent chatbots and AI assistants for customer service, lead generation, and more\n- Business Process Automation - Streamline your workflows, reduce manual work, and boost productivity\n- Data Integration & APIs - Connect your tools seamlessly (CRM, ERP, Accounting, Communication platforms)\n\nReal Results Our Clients See:\n\n✓ 40-60% reduction in manual work\n✓ 24/7 automated customer interactions\n✓ Faster decision-making with real-time data sync\n✓ ROI within 2-3 months\n\nI'd love to hop on a quick 15-minute call...\n\nLooking forward to connecting,\nAlienize.io Team\nhttps://alienize.io",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "4a02b22d-4fbb-49f4-8f67-8f9be6834d96",
+      "name": "Prepare Email2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2432,
+        -448
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.recipientEmail }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "279a743f-8b49-4729-82e1-37da904a666c",
+      "name": "Send Email2",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -2192,
+        -448
+      ],
+      "webhookId": "27abb8cd-a808-44c2-941d-3377f623ef0e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CE86vOGBrfTQucLx",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "id": "check1"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b17abbcc-8551-4deb-8adc-71a31b1a40d3",
+      "name": "Email Success Check2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1904,
+        -448
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4",
+          "mode": "list",
+          "cachedResultName": "Email leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1292726526,
+          "mode": "list",
+          "cachedResultName": "Email Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4/edit#gid=1292726526"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Client_ID": "={{ $('Prepare Email2').item.json.Client_ID }}",
+            "Status": "=Sent",
+            "Sent_At": "={{ $now.setZone('Asia/Karachi').toFormat('dd-MM-yyyy hh:mm a') }}"
+          },
+          "matchingColumns": [
+            "Client_ID"
+          ],
+          "schema": [
+            {
+              "id": "Client_ID",
+              "displayName": "Client_ID",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sent_At",
+              "displayName": "Sent_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b5a066d7-3912-40a0-b0a9-46b9d309189e",
+      "name": "Mark as Sent2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1664,
+        -512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vCqU4SZnhfPpj0vV",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1292726526,
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Client_ID": "={{ $json.Client_ID }}",
+            "Status": "=Failed",
+            "Notes": "={{ $json.error?.message || 'Email failed' }}"
+          },
+          "matchingColumns": [
+            "Client_ID"
+          ],
+          "schema": [
+            {
+              "id": "Client_ID",
+              "displayName": "Client_ID",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6f39893-92f4-4c41-b718-4057881a8b5a",
+      "name": "Mark as Failed2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1664,
+        -368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vCqU4SZnhfPpj0vV",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "2a298605-c066-44ad-af3c-3f295c19b90a",
+      "name": "Delay 5 Sec2",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1424,
+        -448
+      ],
+      "webhookId": "aea5d666-15dd-451b-af2d-ef19aabfbe71"
+    },
+    {
+      "parameters": {},
+      "id": "8bfde194-5e13-4ce6-a667-9a709394b01f",
+      "name": "Merge2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1216,
+        -448
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4",
+          "mode": "list",
+          "cachedResultName": "Email leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1292726526,
+          "mode": "list",
+          "cachedResultName": "Email Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D3CPNB3aqs-yg5PLD1lM8luCr9qe0EoONgLbKLFl-c4/edit#gid=1292726526"
+        },
+        "options": {}
+      },
+      "id": "db868e47-8b63-4ff9-b872-bfc6021cb3ec",
+      "name": "Read Stats1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2608,
+        -112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vCqU4SZnhfPpj0vV",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7728935718",
+        "text": "=Alienize.io Campaign Run Complete!\n\nTotal in sheet: {{ $json.totalEmails }}\nSent (all-time): {{ $json.sentSuccessfully }}\nFailed: {{ $json.failed }}\nSuccess Rate: {{ $json.successRate }}\n\nTime: {{ $now.setZone('Asia/Karachi').toFormat('dd-MM-yyyy hh:mm a') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "ea0af9ea-9c6b-439c-bfa1-1f941eaee0a0",
+      "name": "Notify Telegram2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2208,
+        -112
+      ],
+      "webhookId": "a2380001-de33-4488-9876-7f8a72b3ca40",
+      "credentials": {
+        "telegramApi": {
+          "id": "8jqJvm91C0AFCtnt",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Summary Report": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Read Recipients from Sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Recipients from Sheet3": {
+      "main": [
+        [
+          {
+            "node": "Filter Unsent Only2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Unsent Only2": {
+      "main": [
+        [
+          {
+            "node": "Loop Each Email2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Each Email2": {
+      "main": [
+        [
+          {
+            "node": "Read Stats1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Email2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email2": {
+      "main": [
+        [
+          {
+            "node": "Send Email2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email2": {
+      "main": [
+        [
+          {
+            "node": "Email Success Check2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Success Check2": {
+      "main": [
+        [
+          {
+            "node": "Mark as Sent2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Failed2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Sent2": {
+      "main": [
+        [
+          {
+            "node": "Delay 5 Sec2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Failed2": {
+      "main": [
+        [
+          {
+            "node": "Delay 5 Sec2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delay 5 Sec2": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Loop Each Email2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Stats1": {
+      "main": [
+        [
+          {
+            "node": "Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f36c14df-34d8-4e17-82d4-dd2888758c8a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "54037c749da4164c6e4a963d58111bb73ba1bbdb0a40b294b411ba656f2e7b70"
+  },
+  "nodeGroups": [],
+  "id": "sRFa1KwUQ9Oh44Ob",
+  "tags": []
+}

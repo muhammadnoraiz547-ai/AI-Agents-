@@ -1,0 +1,859 @@
+{
+  "name": "LinkedIn Lead + job  Discovery Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "04c1f4bc-9eff-45a0-bd91-dde3ede322b2",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1984,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "id"
+        }
+      },
+      "id": "488d483f-3a3e-4c92-8c6d-451b86f9ca42",
+      "name": "Get Existing Leads",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1744,
+        352
+      ],
+      "options": {},
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "profileUrl",
+              "renameField": true,
+              "outputFieldName": "existingUrls"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c18e77aa-fe5b-4e60-9630-86b45ff6ec33",
+      "name": "Aggregate Existing URLs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Search Criteria",
+          "mode": "id"
+        }
+      },
+      "id": "7de7ec27-b072-40c0-934c-a3de37c8828f",
+      "name": "Get Search Criteria",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1296,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingUrls = $('Aggregate Existing URLs').first().json.existingUrls || [];\nconst criteriaRows = $input.all();\n\nreturn criteriaRows.map(item => {\n  const c = item.json;\n\n  const titleParts = (c.jobTitle || '').split(',').map(t => t.trim()).filter(Boolean);\n  const titleBlock = titleParts.length ? `(${titleParts.map(t => `\\\"${t}\\\"`).join(' OR ')})` : '';\n\n  let query = `site:linkedin.com/in ${titleBlock}`.trim();\n  if (c.industry) query += ` \\\"${c.industry}\\\"`;\n  if (c.location) query += ` \\\"${c.location}\\\"`;\n\n  return {\n    json: {\n      criteriaId: c.id || c.recordId || item.json.id || '',\n      jobTitle: c.jobTitle || '',\n      location: c.location || '',\n      industry: c.industry || '',\n      searchQuery: query.trim(),\n      existingUrls\n    }\n  };\n});"
+      },
+      "id": "ee5391e0-a43b-4543-8dde-55d20c74b6a5",
+      "name": "Build Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const criteriaItems = $input.all();\n\n// ⬇️ apna asal Apify actorId aur apifyToken yahan bharein (env vars n8n Cloud pr code node mein kaam nahi karte)\nconst accounts = [\n  { accountName: \"apify_account_1\", actorId: \"PASTE_YOUR_ACTOR_ID_1\", apifyToken: \"PASTE_YOUR_APIFY_TOKEN_1\" },\n  { accountName: \"apify_account_2\", actorId: \"PASTE_YOUR_ACTOR_ID_2\", apifyToken: \"PASTE_YOUR_APIFY_TOKEN_2\" },\n  { accountName: \"apify_account_3\", actorId: \"PASTE_YOUR_ACTOR_ID_3\", apifyToken: \"PASTE_YOUR_APIFY_TOKEN_3\" },\n  { accountName: \"apify_account_4\", actorId: \"PASTE_YOUR_ACTOR_ID_4\", apifyToken: \"PASTE_YOUR_APIFY_TOKEN_4\" },\n  { accountName: \"apify_account_5\", actorId: \"PASTE_YOUR_ACTOR_ID_5\", apifyToken: \"PASTE_YOUR_APIFY_TOKEN_5\" }\n];\n\nconst out = [];\nfor (const item of criteriaItems) {\n  const c = item.json;\n  for (const acc of accounts) {\n    out.push({\n      json: {\n        accountName: acc.accountName,\n        actorId: acc.actorId,\n        apifyToken: acc.apifyToken,\n        searchQuery: c.searchQuery,\n        criteriaId: c.criteriaId,\n        jobTitle: c.jobTitle,\n        location: c.location,\n        industry: c.industry,\n        existingUrls: c.existingUrls || []\n      }\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "177a4113-a0ed-4c47-add8-0862807debd4",
+      "name": "Build Apify Account Pool",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/{{$json.actorId}}/run-sync-get-dataset-items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{$json.apifyToken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"query\": $json.searchQuery, \"maxPages\": 5, \"proxyConfiguration\": { \"useApifyProxy\": true, \"apifyProxyGroups\": [\"GOOGLE_SERP\"] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "f7f3f3f6-7aab-4326-865c-03f5b60d9f57",
+      "name": "Run Apify Actor (Sync)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -624,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "6fa08622-8076-4f70-8c17-be67d0746fa8",
+              "leftValue": "={{$json.statusCode}}",
+              "rightValue": 300,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c8e93c8a-334c-4902-9263-6501cbb7f7df",
+      "name": "Run Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -400,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || {};\nconst rawItems = Array.isArray(body) ? body : (body.items || []);\nconst existing = new Set(input.existingUrls || []);\nconst out = [];\n\nfor (const raw of rawItems) {\n  const profileUrl = raw.profileUrl || raw.url || raw.linkedinUrl;\n  if (!profileUrl || existing.has(profileUrl)) continue;\n\n  // Actor sends name + job title combined in \"title\", e.g. \"Shahnawaz - Digital Marketing Manager\"\n  const rawTitle = (raw.title || raw.name || 'Unknown').replace(/[\\u200e\\u200f]/g, '').trim();\n  let fullName = rawTitle;\n  let jobTitle = '';\n  const dashIndex = rawTitle.indexOf(' - ');\n  if (dashIndex !== -1) {\n    fullName = rawTitle.slice(0, dashIndex).trim();\n    jobTitle = rawTitle.slice(dashIndex + 3).trim();\n  }\n\n  out.push({\n    json: {\n      fullName: fullName,\n      jobTitle: jobTitle,\n      company: '',\n      profileUrl: profileUrl,\n      email: '',\n      source: input.accountName,\n      searchQuery: input.searchQuery,\n      matchedLocation: input.location || '',\n      matchedIndustry: input.industry || '',\n      scrapedAt: raw.scrapedAt || new Date().toISOString()\n    }\n  });\n  existing.add(profileUrl);\n}\n\nreturn out;"
+      },
+      "id": "8a5d7629-730e-4b12-9c07-73845b7fa02e",
+      "name": "Normalize & Dedupe Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "id"
+        }
+      },
+      "id": "1f6fad68-4da4-4879-8692-9781238b3ed7",
+      "name": "Save New Lead",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemFields",
+        "options": {}
+      },
+      "id": "441a49a5-acf9-4e6d-993c-15872750676b",
+      "name": "Aggregate New Leads",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        256,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = $input.first().json.newLeads || [];\nconst bySource = {};\nfor (const l of leads) {\n  bySource[l.source] = (bySource[l.source] || 0) + 1;\n}\nconst breakdown = Object.entries(bySource).map(([k, v]) => `• ${k}: ${v}`).join(\"\\n\") || \"No new leads this run.\";\nconst sample = leads.slice(0, 5).map(l => `— ${l.fullName} (${l.jobTitle} @ ${l.company})`).join(\"\\n\");\n\nreturn [{\n  json: {\n    summary: `🚀 **Lead Scraper Run Complete**\\n\\nNew leads found: **${leads.length}**\\n\\n**By account:**\\n${breakdown}\\n\\n**Sample:**\\n${sample || \"—\"}`\n  }\n}];"
+      },
+      "id": "7f770cff-dfa2-4cc1-bb88-ec31b00578d2",
+      "name": "Build Summary Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "PASTE_YOUR_CHAT_ID",
+        "text": "={{$json.summary}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "ccddc3c4-e1e5-4254-8a74-f40015750f0e",
+      "name": "Post Success Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        224
+      ],
+      "webhookId": "f4d4e466-e7ae-4554-a129-f3aa804fe3c0"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c43c000-c128-40ba-9b07-3910421b8624",
+              "name": "account",
+              "type": "string",
+              "value": "={{$json.accountName}}"
+            },
+            {
+              "id": "7eda01ee-7cd2-4ad6-8097-4f52c5a46f6a",
+              "name": "statusCode",
+              "type": "number",
+              "value": "={{$json.statusCode}}"
+            },
+            {
+              "id": "0a77de89-011c-4a01-a0dd-ee286e6887f8",
+              "name": "errorMessage",
+              "type": "string",
+              "value": "={{$json.body?.error || 'Unknown Apify error'}}"
+            },
+            {
+              "id": "adaf9bba-1397-4569-9428-050b4224dc8d",
+              "name": "occurredAt",
+              "type": "string",
+              "value": "={{$now.toISO()}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "419c5a46-911e-4994-bdcc-7c401d7a9115",
+      "name": "Build Error Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "PASTE_YOUR_CHAT_ID",
+        "text": "=Warning: Apify account {{$json.account}} failed (status {{$json.statusCode}}): {{$json.errorMessage}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "f303a5aa-c0af-405c-b861-66de57539f9a",
+      "name": "Alert - Scraper Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        464
+      ],
+      "webhookId": "c0d377be-5368-4483-8743-945f93126669"
+    },
+    {
+      "parameters": {},
+      "id": "1e0a8f26-21b1-4546-809a-ca17fd3329f4",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "PASTE_YOUR_CHAT_ID",
+        "text": "=Workflow {{$json.workflow.name}} crashed.\\nExecution: {{$json.execution.id}}\\nError: {{$json.execution.error?.message}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "acbf8914-cd0c-4a2c-8525-c9d2325ee39d",
+      "name": "Alert - Workflow Crashed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -624,
+        720
+      ],
+      "webhookId": "155c0fdd-4823-4c18-8a97-61891e369623"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Jobs",
+          "mode": "id"
+        },
+        "options": {
+          "fields": [
+            "jobUrl"
+          ]
+        }
+      },
+      "id": "e84c355d-5625-49e8-9efe-3f72d96c476f",
+      "name": "Get Existing Jobs",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1744,
+        576
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "jobUrl",
+              "renameField": true,
+              "outputFieldName": "existingJobUrls"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cfad1d2b-1b44-42f5-ba12-3c1ae3603c1c",
+      "name": "Aggregate Existing Job URLs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const criteriaItems = $input.all();\nconst existingJobUrls = $('Aggregate Existing Job URLs').first().json.existingJobUrls || [];\n\nreturn criteriaItems.map(item => {\n  const c = item.json;\n  const keywords = encodeURIComponent(c.jobTitle || '');\n  const location = encodeURIComponent(c.location || '');\n  const jobSearchUrl = `https://www.linkedin.com/jobs/search/?keywords=${keywords}&location=${location}`;\n\n  return {\n    json: {\n      criteriaId: c.criteriaId || '',\n      jobTitle: c.jobTitle || '',\n      location: c.location || '',\n      industry: c.industry || '',\n      jobSearchUrl: jobSearchUrl,\n      existingJobUrls: existingJobUrls\n    }\n  };\n});"
+      },
+      "id": "76ac639b-3cf7-4f65-91fc-e66b48b9b512",
+      "name": "Build Job Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// apna asal Apify job-actor ID aur token yahan bharein\nconst items = $input.all();\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    actorId: \"curious_coder~linkedin-jobs-scraper\",\n    apifyToken: \"PASTE_YOUR_APIFY_TOKEN\"\n  }\n}));"
+      },
+      "id": "3c811da5-260b-4e47-98c9-17327e28b112",
+      "name": "Job Actor Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/{{$json.actorId}}/run-sync-get-dataset-items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{$json.apifyToken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"count\": 100, \"scrapeCompany\": true, \"splitByLocation\": false, \"urls\": [ $json.jobSearchUrl ] } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "a01046e9-61d8-4f70-98ce-7ff2c06086a1",
+      "name": "Run Apify Actor (Jobs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "j-cond-0001",
+              "leftValue": "={{$json.statusCode}}",
+              "rightValue": 300,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "450d4270-946c-4107-93ba-6910f6c372ac",
+      "name": "Run Successful (Jobs)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -176,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || {};\nconst rawItems = Array.isArray(body) ? body : (body.items || []);\nconst existing = new Set(input.existingJobUrls || []);\nconst out = [];\n\nfor (const raw of rawItems) {\n  const jobUrl = raw.link || raw.url || raw.jobUrl;\n  if (!jobUrl || existing.has(jobUrl)) continue;\n\n  out.push({\n    json: {\n      jobTitle: raw.title || '',\n      company: raw.companyName || raw.company || '',\n      location: raw.location || input.location || '',\n      jobUrl: jobUrl,\n      salary: raw.salary || '',\n      description: raw.description || '',\n      postedDate: raw.postedDate || raw.listedAt || '',\n      source: 'apify_jobs_actor',\n      searchQuery: input.jobSearchUrl || '',\n      scrapedAt: new Date().toISOString()\n    }\n  });\n  existing.add(jobUrl);\n}\n\nreturn out;"
+      },
+      "id": "8f9ff653-3575-4769-8536-7dad43cd6d85",
+      "name": "Normalize & Dedupe Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Jobs",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "cca4ff55-a792-4a4f-8520-7d0e99e350f1",
+      "name": "Save New Job",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "j-set-0001",
+              "name": "account",
+              "type": "string",
+              "value": "=linkedin_jobs_actor"
+            },
+            {
+              "id": "j-set-0002",
+              "name": "statusCode",
+              "type": "number",
+              "value": "={{$json.statusCode}}"
+            },
+            {
+              "id": "j-set-0003",
+              "name": "errorMessage",
+              "type": "string",
+              "value": "={{$json.body?.error || 'Unknown Apify jobs error'}}"
+            },
+            {
+              "id": "j-set-0004",
+              "name": "occurredAt",
+              "type": "string",
+              "value": "={{$now.toISO()}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3c053a80-8b17-495c-8331-1bf883c7ecc0",
+      "name": "Build Job Error Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        432
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Leads": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Existing URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Existing URLs": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Search Criteria": {
+      "main": [
+        [
+          {
+            "node": "Build Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Build Apify Account Pool",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Job Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Apify Account Pool": {
+      "main": [
+        [
+          {
+            "node": "Run Apify Actor (Sync)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Apify Actor (Sync)": {
+      "main": [
+        [
+          {
+            "node": "Run Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Successful?": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Dedupe Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Dedupe Leads": {
+      "main": [
+        [
+          {
+            "node": "Save New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New Lead": {
+      "main": [
+        [
+          {
+            "node": "Aggregate New Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate New Leads": {
+      "main": [
+        [
+          {
+            "node": "Build Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Report": {
+      "main": [
+        [
+          {
+            "node": "Post Success Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Record": {
+      "main": [
+        [
+          {
+            "node": "Alert - Scraper Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Alert - Workflow Crashed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Jobs": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Existing Job URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Existing Job URLs": {
+      "main": [
+        [
+          {
+            "node": "Get Search Criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Job Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Job Actor Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Actor Config": {
+      "main": [
+        [
+          {
+            "node": "Run Apify Actor (Jobs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Apify Actor (Jobs)": {
+      "main": [
+        [
+          {
+            "node": "Run Successful (Jobs)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Successful (Jobs)?": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Dedupe Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Job Error Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Dedupe Jobs": {
+      "main": [
+        [
+          {
+            "node": "Save New Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Job Error Record": {
+      "main": [
+        [
+          {
+            "node": "Alert - Scraper Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "41f90f49-05a8-4ac5-89e9-b0de44ed0c49",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7345132f526c68b67a710a0c3bda45450b1bb8e5ef942acc48d2d534c1490c86"
+  },
+  "nodeGroups": [],
+  "id": "l0962tD6OR1B4WCb",
+  "tags": []
+}

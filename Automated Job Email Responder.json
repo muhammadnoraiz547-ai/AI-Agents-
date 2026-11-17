@@ -1,0 +1,282 @@
+{
+  "name": "Automated Job Email Responder",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "id": "a5d6cb90-5aee-4269-b9f2-71e11e68d6df",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "position": [
+        -352,
+        576
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5cPrudejCBTdIGTG",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "0f62160f-d729-4f70-8a3b-783749fbf418",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        512,
+        736
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "openAiApi": {
+          "id": "Ax2LISLWaq2HgryU",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an HR assistant at Luminar Technology. Your task is to generate professional and courteous email replies to job applicants based on their application details.\n\nHere are the rules:\n\n1. Address the applicant by their name from the email subject or body.\n2. Mention the position they applied for.\n3. Thank them for applying.\n4. Keep the tone friendly, professional, and concise.\n5. Do not include sensitive internal information.\n6. Provide a closing with \"Best regards\" or \"Sincerely\" from the hiring team.\n\nUse this JSON format in your output:\n\n{\n  \"subject\": \"<email subject for reply>\",\n  \"body\": \"<email body for reply>\"\n}\n\nThe inputs you will receive:\n{\n  \"candidateEmail\": {{ $json.candidateEmail }},\n  \"companyEmail\": {{ $json.companyEmail }},\n  \"subject\": {{ $json.subject }}\n}\n\nGenerate the reply email based on this input.\nSpecial Note:Remove the name of the candidate from the subject.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "83ca0c1b-1965-4385-8ffa-6f06e01768c0",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        544,
+        480
+      ],
+      "typeVersion": 3.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "61d9e339-0a62-42c6-8e1c-71c9d88e32b9",
+              "name": "candidateEmail",
+              "type": "string",
+              "value": "={{ $json.From }}"
+            },
+            {
+              "id": "db19c417-706a-49f5-ae61-4badce206fd8",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ $json.Subject }}"
+            },
+            {
+              "id": "14d21a5e-0fae-4049-9420-cf3f29576ee0",
+              "name": "companyEmail",
+              "type": "string",
+              "value": "={{ $json.To }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c59224b3-79e0-46a4-9e7e-e95c6df36850",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        192,
+        480
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\": {\n      \"type\": \"string\",\n      \"description\": \"The email subject for the reply\"\n    },\n    \"body\": {\n      \"type\": \"string\",\n      \"description\": \"The email body for the reply\"\n    }\n  },\n  \"required\": [\"subject\", \"body\"]\n}"
+      },
+      "id": "11f0387a-7249-407d-b196-ceb3f49d0b87",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        864,
+        736
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Edit Fields').item.json.companyEmail }}",
+        "toEmail": "={{ $('Edit Fields').item.json.candidateEmail }}",
+        "subject": "={{ $json.output.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.output.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "8d429b4d-78a3-40fa-bd8d-e04beecc5885",
+      "name": "Send an Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [
+        912,
+        480
+      ],
+      "webhookId": "2b2c0db8-744e-4d8a-9df0-e25e5835318f",
+      "typeVersion": 2.1,
+      "credentials": {
+        "smtp": {
+          "id": "o5dWAqRKcgKgpfRg",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 3,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "7cd82b1b-2fca-4d81-b45a-da69d1dd9a9d",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "leftValue": "=={{ ($json.subject || $json.snippet || '').toLowerCase() }}",
+              "rightValue": "apply for the position"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "37bc69a6-c64e-4a16-b599-52035522985c",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -96,
+        576
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {},
+      "id": "64e652f4-eabb-43ec-bb5e-b423240a66ba",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        192,
+        672
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e18cdb6f-5729-43d0-82c6-45096d1159f8",
+  "meta": {
+    "templateId": "14267",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e221715c354c7738c4e9b3fd2168dea278503b676a0bf5d95f2cc5a823eb7cb6"
+  },
+  "id": "9d7oFxENQic52Iyc",
+  "tags": []
+}

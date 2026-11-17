@@ -1,0 +1,636 @@
+{
+  "name": "AI WhatsApp Receptionist - Real Estate",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "e21228f3-48a8-4e87-b0cd-98738e59a3c4",
+      "name": "Telegram Inbound Message Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -3600,
+        2864
+      ],
+      "webhookId": "telegram-inbound-all-properties",
+      "credentials": {
+        "telegramApi": {
+          "id": "71cggCh640F3ql4E",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "Webhook - listens for inbound Telegram messages from all properties' bots/chats"
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $('Telegram Inbound Message Trigger').item.json.message.text }}",
+        "options": {}
+      },
+      "id": "5bcc05e0-d4ee-4c76-8f83-ac287b982bff",
+      "name": "Extract Sentiment",
+      "type": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+      "typeVersion": 1,
+      "position": [
+        -3344,
+        2528
+      ],
+      "notes": "Detects positive/neutral/negative sentiment of inbound Telegram message"
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $('Telegram Inbound Message Trigger').item.json.message.text }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "low",
+              "description": "General inquiry or casual question with no urgency — browsing, asking about location, amenities, or pricing with no immediate intent to act"
+            },
+            {
+              "category": "medium",
+              "description": "Lead is genuinely interested — wants more details, photos, or wants to schedule a viewing sometime soon, but not urgent"
+            },
+            {
+              "category": "high",
+              "description": "Urgent — lead wants to book a viewing immediately, ready to close a deal, sounds frustrated/angry, or explicitly asks to speak with a human agent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b7d00678-f82c-4a53-915e-2594ba679e79",
+      "name": "Classify Priority",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [
+        -3088,
+        2752
+      ],
+      "notes": "Classifies lead priority e.g. medium, high"
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Telegram Inbound Message Trigger').item.json.message.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "intent",
+              "description": "The main intent of the message - e.g. book_viewing, ask_price, ask_availability, complaint, general_inquiry, cancel_booking"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4090cb27-6256-4a5f-b9c5-c12ea982f2ec",
+      "name": "Extract Intent",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1,
+      "position": [
+        -3360,
+        3008
+      ],
+      "notes": "Extracts intent of the message (e.g. book viewing, ask price, complaint)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "497eb719-9d11-477e-9b19-e82c884d44f6",
+      "name": "Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2752,
+        2624
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CMvO7xMYtwVkqIxh",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "notes": "Gemini 2.5 Pro - main LLM for the AI Receptionist Agent"
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "8933e1e5-d5c8-46f3-966f-b767b65906da",
+      "name": "Context Window Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [
+        -2592,
+        2624
+      ],
+      "notes": "Keeps conversation context/history per lead (sessionKey should use Telegram chat.id)"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "company_knowledge_base",
+        "toolDescription": "Search property listings, FAQs and company knowledge base",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "ai-agent-new",
+          "mode": "list",
+          "cachedResultName": "ai-agent-new"
+        },
+        "options": {}
+      },
+      "id": "77504346-87cb-4021-afd4-1a43faf23662",
+      "name": "External Knowledge Base",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [
+        -2944,
+        3184
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "id": "fKme5t0XhalAIVqE",
+          "name": "Pinecone account"
+        }
+      },
+      "notes": "Vector store search - property listings & FAQ knowledge base"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.CRM_API_URL}}/contacts/{{ $('Telegram Inbound Message Trigger').item.json.message.from.id }}",
+        "options": {}
+      },
+      "id": "597914f3-f211-4beb-87cf-611821050e5f",
+      "name": "User Profile Data (CRM Pull)",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        -2656,
+        3120
+      ],
+      "notes": "Pulls existing user/lead profile from CRM using Telegram user id"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the AI Receptionist for a real estate agency. Sentiment: {{$json.sentiment}}. Priority: {{$json.priority}}. Intent: {{$json.intent}}. Respond helpfully and professionally to the lead's Telegram message: {{ $('Telegram Inbound Message Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "You are a friendly, professional AI real estate receptionist. Use the knowledge base for property details and CRM data for personalization. Decide the next outcome (reply, escalate, schedule, save lead)."
+        }
+      },
+      "id": "c73a299b-b8ce-4499-a879-35c317817db1",
+      "name": "AI Receptionist Agent (Advanced)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -2752,
+        2864
+      ],
+      "notes": "Advanced AI Agent: Gemini 2.5 Pro + Memory + Vector Store + CRM pull"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.outcome}}",
+                    "value2": "reply"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.outcome}}",
+                    "value2": "log"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.outcome}}",
+                    "value2": "save_lead"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.outcome}}",
+                    "value2": "schedule"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.outcome}}",
+                    "value2": "escalate"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "da5e547f-17b4-4f0b-a5f9-61266efdfbe7",
+      "name": "Outcome Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -2448,
+        2864
+      ],
+      "notes": "Routes to Reply / Log / Save Lead / Schedule / Escalate based on Agent's decided outcome"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Inbound Message Trigger').item.json.message.chat.id }}",
+        "text": "={{$json.aiReply}}",
+        "additionalFields": {}
+      },
+      "id": "ded7abff-01b4-40c9-85ca-6dde498e5fa8",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        2576
+      ],
+      "webhookId": "ec957709-4267-4354-971a-60f5403e2672",
+      "credentials": {
+        "telegramApi": {
+          "id": "71cggCh640F3ql4E",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "Sends AI-generated reply back via Telegram (only works as a reply - bot cannot initiate chat with a user who hasn't messaged it first)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.CRM_API_URL}}/interactions",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "05592ea4-fbd6-42d4-b6f4-355d74a43454",
+      "name": "Log Interaction (CRM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2096,
+        2752
+      ],
+      "notes": "Logs the conversation/interaction into CRM"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ea97fa4e-45cf-4b88-bb66-3fcd45d00407",
+      "name": "Save Lead Data",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1888,
+        2864
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "notes": "Saves new/updated lead data to Airtable"
+    },
+    {
+      "parameters": {
+        "calendar": "={{$env.GOOGLE_CALENDAR_ID}}",
+        "start": "={{$json.preferredTime}}",
+        "end": "={{$json.preferredTimeEnd}}",
+        "additionalFields": {}
+      },
+      "id": "42fba74c-ff1b-4b29-8b13-3287e131c191",
+      "name": "Schedule Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -2096,
+        2976
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "CBQYxkRlZF0LiVxo",
+          "name": "Google Calendar OAuth2 API"
+        }
+      },
+      "notes": "Schedules a property viewing / call in Google Calendar"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": "={{$env.SLACK_ESCALATION_CHANNEL}}",
+        "text": "=⚠️ Manual escalation needed for lead {{$json.leadName}} (Telegram user id: {{ $('Telegram Inbound Message Trigger').item.json.message.from.id }}). Reason: {{$json.escalationReason}}",
+        "otherOptions": {}
+      },
+      "id": "1bb38e57-9df9-45c2-8cb8-e6f80d12603f",
+      "name": "Escalate to Human Agent (Manual)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -1872,
+        3120
+      ],
+      "webhookId": "982b80c9-9c53-4551-8f1f-4e2ef55bafbe",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hKE71XwhsCATGpE1",
+          "name": "Slack OAuth2 API"
+        }
+      },
+      "notes": "Notifies a human agent for manual takeover"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -3312,
+        2816
+      ],
+      "id": "bb5bc7a3-0219-4e47-993f-4f2fbe7873ff",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "jcxH7m5gEqelA2F0",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Inbound Message Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Sentiment",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Sentiment": {
+      "main": [
+        [
+          {
+            "node": "Classify Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Priority": {
+      "main": [
+        [
+          {
+            "node": "AI Receptionist Agent (Advanced)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Intent": {
+      "main": [
+        [
+          {
+            "node": "AI Receptionist Agent (Advanced)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Receptionist Agent (Advanced)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Window Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Receptionist Agent (Advanced)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Knowledge Base": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Receptionist Agent (Advanced)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Profile Data (CRM Pull)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Receptionist Agent (Advanced)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Receptionist Agent (Advanced)": {
+      "main": [
+        [
+          {
+            "node": "Outcome Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Decision": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Interaction (CRM)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Schedule Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escalate to Human Agent (Manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Sentiment",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Extract Intent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Classify Priority",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "293bef7b-24ac-4d45-a486-44d2793d8e60",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aaea7183e39683ce155401f4fda51255a8820d25184b8a19d6242f7839f567bb"
+  },
+  "nodeGroups": [],
+  "id": "cRHwlq25HewPTeb3",
+  "tags": []
+}

@@ -1,0 +1,431 @@
+{
+  "name": "smart stock management agent",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi there! 👋\n How can I assist you today?",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -432,
+        -32
+      ],
+      "id": "68c67284-0daf-4edd-bcfe-2dc0a4de2eeb",
+      "name": "When chat message received",
+      "webhookId": "f78037ee-e9b7-4291-8f27-27c58e4fc243"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an inventory management assistant. You help users manage product stock levels in an Airtable database.\n\nWhen a user asks to add/increase stock:\n1. First search for the product by name to get the record ID and current stock level\n2. Calculate the new stock quantity (current stock + amount to add)\n3. Update the record by passing THREE parameters to the update tool:\n   - record_id: The \"id\" field from the search results (e.g., \"recXXXXXXXXXXXXXX\")\n   - newquantity: The new total stock quantity\n   - newPrice: The current price (keep it the same unless user wants to change it)\n\nWhen a user asks to reduce/decrease stock:\n1. First search for the product by name to get the record ID and current stock level\n2. Calculate the new stock quantity (current stock - amount to reduce)\n3. Update the record by passing the record_id, newquantity, and newPrice\n\nWhen a user asks to set stock to a specific number:\n1. First search for the product to get the record ID and current price\n2. Update the record by passing the record_id, newquantity (the specific number), and newPrice\n\nIMPORTANT: \n- Always pass the \"id\" field from search results as \"record_id\" to the update tool\n- The search returns an \"id\" field like \"recXXXXXXXXXXXXXX\" - this is what you need to pass\n- Always include all three parameters: record_id, newquantity, and newPrice\n\nAlways confirm the action with the user after completing it."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -96,
+        -32
+      ],
+      "id": "8b66b946-240c-4c96-953a-5f7154e0658e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -288,
+        192
+      ],
+      "id": "23423c65-7db2-40a7-a13a-7b391813111f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "nUMPnm1sa13vp0Vx",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        176
+      ],
+      "id": "8f3d0e82-af7c-430c-b59d-68e519bee12b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOP6jv6PYIbQGRl",
+          "mode": "list",
+          "cachedResultName": "Mobile Accessories Inventory",
+          "cachedResultUrl": "https://airtable.com/appOP6jv6PYIbQGRl"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblY36zoHUCLJ1Z9o",
+          "mode": "list",
+          "cachedResultName": "Products",
+          "cachedResultUrl": "https://airtable.com/appOP6jv6PYIbQGRl/tblY36zoHUCLJ1Z9o"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        192
+      ],
+      "id": "8bb7cdb1-3efd-4a73-891e-5dbc8dde9856",
+      "name": "search record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "NBUXkCgz0M2a9SCR",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appOP6jv6PYIbQGRl",
+          "mode": "list",
+          "cachedResultName": "Mobile Accessories Inventory",
+          "cachedResultUrl": "https://airtable.com/appOP6jv6PYIbQGRl"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblY36zoHUCLJ1Z9o",
+          "mode": "list",
+          "cachedResultName": "Products",
+          "cachedResultUrl": "https://airtable.com/appOP6jv6PYIbQGRl/tblY36zoHUCLJ1Z9o"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id__using_to_match_', `The Airtable record ID to update`, 'string') }}",
+            "Price": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Price', `update the new price in airtable`, 'number') }}",
+            "stock quantity": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('stock_quantity', `update the new quantity in airtable`, 'string') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "SKU",
+              "displayName": "SKU",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Cases",
+                  "value": "Cases"
+                },
+                {
+                  "name": "Chargers",
+                  "value": "Chargers"
+                },
+                {
+                  "name": "Cables",
+                  "value": "Cables"
+                },
+                {
+                  "name": "Screen Protectors",
+                  "value": "Screen Protectors"
+                },
+                {
+                  "name": "Headphones",
+                  "value": "Headphones"
+                },
+                {
+                  "name": "Speakers",
+                  "value": "Speakers"
+                },
+                {
+                  "name": "Power Banks",
+                  "value": "Power Banks"
+                },
+                {
+                  "name": "Other",
+                  "value": "Other"
+                },
+                {
+                  "name": "Electronics",
+                  "value": "Electronics"
+                },
+                {
+                  "name": "Home & Kitchen",
+                  "value": "Home & Kitchen"
+                },
+                {
+                  "name": "Sports & Outdoors",
+                  "value": "Sports & Outdoors"
+                },
+                {
+                  "name": "Apparel",
+                  "value": "Apparel"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Product Image",
+              "displayName": "Product Image",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Supplier",
+              "displayName": "Supplier",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Minimum Stock Level",
+              "displayName": "Minimum Stock Level",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Active",
+                  "value": "Active"
+                },
+                {
+                  "name": "Discontinued",
+                  "value": "Discontinued"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Inventory",
+              "displayName": "Inventory",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Stock Movements",
+              "displayName": "Stock Movements",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "stock quantity",
+              "displayName": "stock quantity",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.1,
+      "position": [
+        176,
+        192
+      ],
+      "id": "6c6f7349-a14d-40e8-8b88-1ffde7c15c2e",
+      "name": "Update record in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "NBUXkCgz0M2a9SCR",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search record": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record in Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b52f9e97-95f5-4e64-bdc1-de0a1f08bcfa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0f26cd57f728b93c7f21e42f6da7b88a4282a08c7b73a46bf6c40a82dc7312f4"
+  },
+  "id": "TqEzEKCadRO3B2Zq",
+  "tags": []
+}

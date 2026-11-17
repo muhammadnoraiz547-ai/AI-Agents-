@@ -1,0 +1,1416 @@
+{
+  "name": "Smart OPD (out patient department) automation Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "1ed1035a-3c77-4b93-9814-0e980e3effa4",
+        "formTitle": "New Appointment Request",
+        "formDescription": "Patient appointment booking form",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Patient Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Telegram Chat ID",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Preferred Date",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Preferred Time",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "09:00 AM"
+                  },
+                  {
+                    "option": "09:30 AM"
+                  },
+                  {
+                    "option": "10:00 AM"
+                  },
+                  {
+                    "option": "10:30 AM"
+                  },
+                  {
+                    "option": "11:00 AM"
+                  },
+                  {
+                    "option": "02:00 PM"
+                  },
+                  {
+                    "option": "02:30 PM"
+                  },
+                  {
+                    "option": "03:00 PM"
+                  },
+                  {
+                    "option": "03:30 PM"
+                  },
+                  {
+                    "option": "04:00 PM"
+                  },
+                  {
+                    "option": "04:30 PM"
+                  },
+                  {
+                    "option": "05:00 PM"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reason for Visit"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Website Appointment Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        -624
+      ],
+      "id": "3f74d089-f249-424c-a038-b2b12b094904",
+      "webhookId": "1ed1035a-3c77-4b93-9814-0e980e3effa4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "53bd99ef-46e3-4157-af5c-44bb061b7dfb",
+              "name": "patientName",
+              "value": "={{ $json['Patient Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "c182e13d-1221-49f1-99f0-b81db7995db8",
+              "name": "phone",
+              "value": "={{ $json['Phone Number (WhatsApp)'] }}",
+              "type": "string"
+            },
+            {
+              "id": "74827f29-ab90-4784-8019-9d5a9f0244e2",
+              "name": "date",
+              "value": "={{ $json['Preferred Date'] }}",
+              "type": "string"
+            },
+            {
+              "id": "e81c3e3c-2450-4f01-8d5a-a3005a13d085",
+              "name": "time",
+              "value": "={{ $json['Preferred Time'] }}",
+              "type": "string"
+            },
+            {
+              "id": "197d4b71-907c-4c05-9a6b-297f8233f0b9",
+              "name": "reason",
+              "value": "={{ $json['Reason for Visit'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Format Appointment Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -720,
+        -624
+      ],
+      "id": "142c54db-8941-481b-823d-ee3824dabf3f",
+      "notes": "Fields: patientName, chatId, date, time, reason -> map from form fields"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblyhZ5Lv2sbbGGnH",
+          "mode": "list",
+          "cachedResultName": "Patients",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblyhZ5Lv2sbbGGnH"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{$json.patientName}}",
+            "Status": "New",
+            "Phone": "={{ $json.phone }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Create/Update Patient Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -512,
+        -624
+      ],
+      "id": "5fd69059-a533-4d27-b9ee-57be3f01949d",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfYBBtO9DDbofod",
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblfYBBtO9DDbofod"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "PatientID": "={{$json.id}}",
+            "Date": "={{$('Format Appointment Data').item.json.date}}",
+            "Time": "={{$('Format Appointment Data').item.json.time}}",
+            "Reason": "={{$('Format Appointment Data').item.json.reason}}",
+            "PatientPhone": "={{ $json.fields.Phone }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "PatientID",
+              "displayName": "PatientID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "PatientPhone",
+              "displayName": "PatientPhone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Create Appointment Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -288,
+        -624
+      ],
+      "id": "412c5653-da02-457e-be35-ededfeef70bc",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "muhammadnoraiz547@gmail.com",
+          "mode": "list",
+          "cachedResultName": "muhammadnoraiz547@gmail.com"
+        },
+        "start": "={{ $('Format Appointment Data').item.json.date }}T{{ DateTime.fromFormat($('Format Appointment Data').item.json.time, 'hh:mm a').toFormat('HH:mm:ss') }}",
+        "end": "={{ $('Format Appointment Data').item.json.date }}T{{ DateTime.fromFormat($('Format Appointment Data').item.json.time, 'hh:mm a').plus({minutes: 30}).toFormat('HH:mm:ss') }}",
+        "additionalFields": {
+          "summary": "=OPD Appointment - {{$('Format Appointment Data').item.json.patientName}}"
+        }
+      },
+      "name": "Add to Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -64,
+        -624
+      ],
+      "id": "63ec7c79-430f-47d7-960d-601a66df15fd",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "CBQYxkRlZF0LiVxo",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Format Appointment Data').item.json.chatId }}",
+        "text": "=Dear {{$('Format Appointment Data').item.json.patientName}}, your appointment on {{$('Format Appointment Data').item.json.date}} at {{$('Format Appointment Data').item.json.time}} is confirmed. Thank you!",
+        "additionalFields": {}
+      },
+      "name": "Send Telegram Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        -624
+      ],
+      "id": "51e7c53d-342e-476b-b6df-77e3febabe5f",
+      "webhookId": "92ee2dca-0e95-4781-aaca-6efccdd98129",
+      "credentials": {
+        "telegramApi": {
+          "id": "71cggCh640F3ql4E",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1aI82J-DIAfu_Kgh9jT3xLA657yQ6vSNWYqAJutX3LJQ",
+          "mode": "list",
+          "cachedResultName": "clinic",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aI82J-DIAfu_Kgh9jT3xLA657yQ6vSNWYqAJutX3LJQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 930704270,
+          "mode": "list",
+          "cachedResultName": "OPD_Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aI82J-DIAfu_Kgh9jT3xLA657yQ6vSNWYqAJutX3LJQ/edit#gid=930704270"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Confirmation Sent At",
+              "displayName": "Confirmation Sent At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Log to OPD Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        368,
+        -624
+      ],
+      "id": "679cdce4-20ac-49e4-989e-303e28105af4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Message Received",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -896,
+        -96
+      ],
+      "id": "a5539d09-5366-4d71-9f2c-5e6d78b3bf77",
+      "webhookId": "2580347a-30e1-4e86-82e2-94127a10fa75",
+      "credentials": {
+        "telegramApi": {
+          "id": "71cggCh640F3ql4E",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a clinic receptionist AI. Classify the patient's message into one of: BOOK, RESCHEDULE, CANCEL, QUERY_RECORDS, GENERAL. Also extract patientName, date, time if mentioned. Message: {{$json.message.text}}",
+        "options": {
+          "systemMessage": "Respond ONLY in JSON: {\"intent\": \"\", \"patientName\": \"\", \"date\": \"\", \"time\": \"\", \"reply\": \"\"}"
+        }
+      },
+      "name": "AI Intent Classifier",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -512,
+        -96
+      ],
+      "id": "f38184a8-b1a8-48ba-9839-f91a593b0125"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        96
+      ],
+      "id": "b232e866-333d-483a-882c-4c86f2a5bc3c",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CMvO7xMYtwVkqIxh",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.output.intent}}",
+                    "value2": "BOOK"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.output.intent}}",
+                    "value2": "RESCHEDULE"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.output.intent}}",
+                    "value2": "CANCEL"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.output.intent}}",
+                    "value2": "QUERY_RECORDS"
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -176,
+        -96
+      ],
+      "id": "6d611eaf-7b20-43c1-857a-5a7a1adde752"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfYBBtO9DDbofod",
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblfYBBtO9DDbofod"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "PatientChatID": "={{$('Telegram Message Received').item.json.message.chat.id}}",
+            "Date": "={{$json.output.date}}",
+            "Time": "={{$json.output.time}}",
+            "Status": "Pending Confirmation"
+          }
+        },
+        "options": {}
+      },
+      "name": "Create Appointment (via Telegram)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        -352
+      ],
+      "id": "c8d9b672-be3b-42b4-a14b-a80af3507ec1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfYBBtO9DDbofod",
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblfYBBtO9DDbofod"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{$json.output.date}}",
+            "Time": "={{$json.output.time}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "PatientID",
+              "displayName": "PatientID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "PatientPhone",
+              "displayName": "PatientPhone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Update Appointment (Reschedule)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        -176
+      ],
+      "id": "c8faed7b-6612-4cfc-b1e9-7310164cca0c",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfYBBtO9DDbofod",
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblfYBBtO9DDbofod"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "PatientID",
+              "displayName": "PatientID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "PatientPhone",
+              "displayName": "PatientPhone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Update Appointment (Cancel)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        -32
+      ],
+      "id": "139a7e84-3106-4dfc-9aec-69484aeb27a6",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblyhZ5Lv2sbbGGnH",
+          "mode": "list",
+          "cachedResultName": "Patients",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblyhZ5Lv2sbbGGnH"
+        },
+        "filterByFormula": "={ChatID}=\"{{$('Telegram Message Received').item.json.message.chat.id}}\"",
+        "options": {}
+      },
+      "name": "Fetch Patient Records",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        112
+      ],
+      "id": "3f3476e7-2a6a-4a06-90da-408bf6e95f76",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Message Received').item.json.message.chat.id }}",
+        "text": "={{$json.output.reply || 'Thank you, your request has been processed.'}}",
+        "additionalFields": {}
+      },
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        -96
+      ],
+      "id": "043a9f20-ee84-4202-8a21-08b81b1d943e",
+      "webhookId": "f56fce4d-3e33-40e5-af98-90a4288174ad",
+      "credentials": {
+        "telegramApi": {
+          "id": "71cggCh640F3ql4E",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJGM6PZV5",
+          "mode": "list",
+          "cachedResultName": "social"
+        },
+        "text": "=New Telegram request from {{$('Telegram Message Received').item.json.message.chat.id}}: {{$json.output.intent}}",
+        "otherOptions": {}
+      },
+      "name": "Notify Staff (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        528,
+        -96
+      ],
+      "id": "c245c1f2-9673-47cd-ad3d-7ce63c31bfdb",
+      "webhookId": "896ecbff-4fc6-45b4-8495-a6ee78b9b6e7",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hKE71XwhsCATGpE1",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily Reminder Schedule (9 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        848,
+        -368
+      ],
+      "id": "58081b3e-7c68-4517-9f7d-965053360b0b"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appFSnAKwHjnyntFN",
+          "mode": "list",
+          "cachedResultName": "Clinic Automation",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblfYBBtO9DDbofod",
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://airtable.com/appFSnAKwHjnyntFN/tblfYBBtO9DDbofod"
+        },
+        "filterByFormula": "AND({Date}=DATEADD(TODAY(),1,'days'), {Status}!='Cancelled')",
+        "options": {}
+      },
+      "name": "Get Tomorrow's Appointments",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        -368
+      ],
+      "id": "03911ab9-09a9-44e1-bdc1-3fea9ea8a06d",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "eXaMH6ApM9pOAbZ4",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Loop Each Appointment",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1328,
+        -368
+      ],
+      "id": "b6805860-b3b3-4da0-bc00-9557f609b8c7"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.ChatID || $json.PatientChatID }}",
+        "text": "=Reminder: You have an appointment tomorrow at {{$json.Time}}. Reply CONFIRM or RESCHEDULE.",
+        "additionalFields": {}
+      },
+      "name": "Send Reminder (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        -480
+      ],
+      "id": "10b421ac-9ba3-4c53-8d5e-3f471a832ce0",
+      "webhookId": "021dc49e-030f-4cc2-878c-3ce5075ed548",
+      "credentials": {
+        "telegramApi": {
+          "id": "71cggCh640F3ql4E",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1aI82J-DIAfu_Kgh9jT3xLA657yQ6vSNWYqAJutX3LJQ",
+          "mode": "list",
+          "cachedResultName": "clinic",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aI82J-DIAfu_Kgh9jT3xLA657yQ6vSNWYqAJutX3LJQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 166000704,
+          "mode": "list",
+          "cachedResultName": "Reminder_Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aI82J-DIAfu_Kgh9jT3xLA657yQ6vSNWYqAJutX3LJQ/edit#gid=166000704"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment Date",
+              "displayName": "Appointment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment Time",
+              "displayName": "Appointment Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reminder Status",
+              "displayName": "Reminder Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reminder Sent At",
+              "displayName": "Reminder Sent At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Log Reminder Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1776,
+        -400
+      ],
+      "id": "3228893c-9ad4-479a-819b-53ec90e54ff8",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Website Appointment Form": {
+      "main": [
+        [
+          {
+            "node": "Format Appointment Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Appointment Data": {
+      "main": [
+        [
+          {
+            "node": "Create/Update Patient Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create/Update Patient Record": {
+      "main": [
+        [
+          {
+            "node": "Create Appointment Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Appointment Record": {
+      "main": [
+        [
+          {
+            "node": "Add to Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Log to OPD Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Message Received": {
+      "main": [
+        [
+          {
+            "node": "AI Intent Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Intent Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intent Classifier": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Create Appointment (via Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Appointment (Reschedule)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Appointment (Cancel)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Patient Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Appointment (via Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Appointment (Reschedule)": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Appointment (Cancel)": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Patient Records": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Reply": {
+      "main": [
+        [
+          {
+            "node": "Notify Staff (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Reminder Schedule (9 AM)": {
+      "main": [
+        [
+          {
+            "node": "Get Tomorrow's Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tomorrow's Appointments": {
+      "main": [
+        [
+          {
+            "node": "Loop Each Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Each Appointment": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Reminder (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Log Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Reminder Sent": {
+      "main": [
+        [
+          {
+            "node": "Loop Each Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0c7ad2a9-ebe3-4cb0-9276-be604d2bf807",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aaea7183e39683ce155401f4fda51255a8820d25184b8a19d6242f7839f567bb"
+  },
+  "nodeGroups": [],
+  "id": "AFSPSNSH37Y6G6v2",
+  "tags": []
+}

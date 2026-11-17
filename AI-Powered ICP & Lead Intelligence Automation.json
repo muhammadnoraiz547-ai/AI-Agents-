@@ -1,0 +1,526 @@
+{
+  "name": "AI-Powered ICP & Lead Intelligence Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "699f325b-df7d-44ac-aaf3-9a91bcb66697",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        1280,
+        -368
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "explain",
+              "type": "booleanValue"
+            },
+            {
+              "name": "size",
+              "type": "numberValue",
+              "numberValue": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "40aa5f28-d804-463a-8687-6727d7263c5a",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1296,
+        32
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "X-API-KEY",
+              "value": "b52f9125fa9653f6affaf326c0c7da3a52141343"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cf0858e6-23d0-4aa0-a2b3-a4bab8310f48",
+      "name": "Authorization",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1296,
+        -176
+      ],
+      "notesInFlow": true,
+      "typeVersion": 2,
+      "notes": "Get API key here:\n\nhttps://implisense.com/de/contact"
+    },
+    {
+      "parameters": {
+        "functionCode": "const ids = items[0].json.id || [];\nconst limitedIds = ids.slice(0, 12);   // Sirf 12 best IDs\nreturn [{\n  json: {\n    serialization: limitedIds.join(',')\n  }\n}];"
+      },
+      "id": "31be4f27-9a5d-4cec-8302-cf54f984ce0f",
+      "name": "serialize_ids",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1824,
+        -176
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "serialization",
+              "value": "={{ $json.serialization.replace(/[,]/g,'\",\"').trim() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9747ea3f-cc89-4706-9934-dde1979d423a",
+      "name": "trim",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        2016,
+        -176
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "=https://google.serper.dev/search\n",
+        "jsonParameters": true,
+        "options": {
+          "fullResponse": false
+        },
+        "bodyParametersJson": "={\n  \"q\": \"={{ $json.searchQuery }}\"\n}",
+        "headerParametersJson": "{\n  \"X-API-KEY\": \"b52f9125fa9653f6affaf326c0c7da3a52141343\",\n  \"Content-Type\": \"application/json\"\n}"
+      },
+      "id": "2ed3cef0-68d2-44eb-81cb-657a96720835",
+      "name": "get_lookalikes",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 2,
+      "position": [
+        2240,
+        -176
+      ],
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "typeVersion": 1,
+      "waitBetweenTries": 5000,
+      "continueOnFail": true,
+      "notes": "Get your API key here:\n\nhttps://implisense.com/de/contact"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "organic",
+        "options": {}
+      },
+      "id": "f932ee32-7178-4c8f-aa63-88211abe6235",
+      "name": "get_companies",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        2624,
+        -400
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=={{ $json.summary || $json.companies }}"
+            },
+            {
+              "role": "system",
+              "content": "=You are an expert B2B market analyst. Analyze these similar companies found via search and generate a comprehensive Ideal Customer Profile (ICP).\n\nGenerate a structured ICP with:\n\n1. **Industry & Sector**\n   - Primary industry vertical\n   - Sub-sectors and niches\n\n2. **Company Characteristics**\n   - Typical company size (employees, revenue)\n   - Business model (B2B, B2C, SaaS, etc.)\n   - Geographic focus\n\n3. **Technology Stack**\n   - Common technologies mentioned\n   - Digital maturity indicators\n\n4. **Ideal Customer Traits**\n   - Job titles of decision makers\n   - Department/function\n   - Pain points and challenges\n\n5. **Buyer Intent Signals**\n   - What triggers purchase decisions\n   - Common use cases\n   - Success metrics they care about\n\n6. **Competitive Landscape**\n   - Market positioning\n   - Differentiation factors\n\nBe specific and actionable. Base insights strictly on the provided company data."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "d13b051d-9b5f-4fd3-b3ab-e5997091477b",
+      "name": "generate_icp_report",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        2800,
+        0
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "icp_report",
+              "stringValue": "={{ $json.output[0].content[0].text }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "092a1a6d-c03e-49e5-9499-a3f952f6cd05",
+      "name": "icp_report",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3120,
+        0
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "crmLeadScore",
+              "value": "={{Math.round($json.score * 100)}}"
+            }
+          ],
+          "string": [
+            {
+              "name": "crmAccountName",
+              "value": "={{$json.name}}"
+            },
+            {
+              "name": "crmDomain",
+              "value": "={{$json.url}}"
+            },
+            {
+              "name": "crmCity",
+              "value": "={{$json.city}}"
+            },
+            {
+              "name": "crmZip",
+              "value": "={{$json.zip}}"
+            },
+            {
+              "name": "crmStreet",
+              "value": "={{$json.street}}"
+            },
+            {
+              "name": "crmImplisenseId",
+              "value": "={{$json.id}}"
+            },
+            {
+              "name": "crmProfileUrl",
+              "value": "={{$json.profile}}"
+            },
+            {
+              "name": "crmExplanation",
+              "value": "={{$json.explanation}}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "crmIsActiveCompany",
+              "value": "={{$json.active}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4a127fb-1184-4e6e-95db-4ff7054a5353",
+      "name": "list_of_companies",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3008,
+        -400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n {\n \"id\": [\n\"DEXEF64Q6Q57\",\n\"DEMHMCXXVX35\",\n\"DE94CIJM2285\",\n\"DECXL1MULU53\",\n\"DE44A37AB950\",\n\"DEWX7YLSXD33\",\n\"DENT1AT56A58\",\n\"DE9UMUNCN020\",\n\"DEDEHNP9UC53\",\n\"DEWT7QXQRQ32\",\n\"DECM46M31225\",\n\"DEI2J6FMVZ26\",\n\"DERL98JJ8F78\",\n\"DEC1Y6A0FK62\",\n\"DE1BS1HZU967\",\n\"DE0J7WCH5468\",\n\"DES5IQ9K8M60\",\n\"DE8HQA4XU409\",\n\"DEW5A8SY9V96\",\n\"DEEZZ62FBP42\",\n\"DEG0OAPZ2P91\",\n\"DEKGPZBX0E50\",\n\"DEZ82JE8RX39\",\n\"DEVAY0708427\",\n\"DE0UZ5OFAR95\",\n\"DEC7GHLMW408\",\n\"DEKNFBFHXJ57\",\n\"DEV54N9RH355\",\n\"DE359D7HY984\",\n\"DEADNXAEPO75\",\n\"DEIJAKISPD17\",\n\"DEK7539BP071\",\n\"DEEI80UPMF51\",\n\"DEC6318YME54\",\n\"DEDLY796C977\",\n\"DESGYEATSN08\",\n\"DEYYSTVOLU53\",\n\"DEOIFM53GA57\",\n\"DE4R801G0062\",\n\"DEWKBUVB4W43\",\n\"DESXBBGSL141\",\n\"DE5IW0RPDQ32\",\n\"DEK5L0PKA055\",\n\"DE5QRL004Z42\",\n\"DEFYDJU4GT53\",\n\"DEA1VHLSRB24\",\n\"DEFWE4TZQB44\",\n\"DEUPA9T3GU46\",\n\"DEVF9L9EC003\",\n\"DEYN58WJE381\",\n\"DEOVFS3SLX61\",\n\"DEKSFLSIMH05\",\n\"DEADOZ8Y3957\",\n\"DEPI9ZQUX811\"\n ]\n}\n];"
+      },
+      "id": "a20d1808-d2a3-4722-b148-9c909b04c978",
+      "name": "Mock ICP Companies based on Implisense-ID",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1664,
+        32
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1NxOwS_rT2qeGTINwb7l64N6CLvi82gszJSPeTBA6phs",
+          "mode": "list",
+          "cachedResultName": "record",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NxOwS_rT2qeGTINwb7l64N6CLvi82gszJSPeTBA6phs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NxOwS_rT2qeGTINwb7l64N6CLvi82gszJSPeTBA6phs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ICP": "={{$json.icp_report || ''}}",
+            "Description": "={{$json.snippet}}",
+            "Website": "={{$json.link}}",
+            "Company": "={{$json.title}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ICP",
+              "displayName": "ICP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3408,
+        -256
+      ],
+      "id": "279c1500-83dd-4df4-b198-1ddebeb08ee1",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ykaP9mOWqWAe1YeS",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get companies from get_lookalikes output\nconst items = $input.all();\nlet companies = [];\n\nif (items.length > 0 && items[0].json.organic) {\n    companies = items[0].json.organic;\n} else if (items.length > 0 && Array.isArray(items[0].json)) {\n    companies = items[0].json;\n}\n\nconst companySummary = companies.map((c, i) => \n    `${i + 1}. ${c.title || 'No Title'}\\n${c.snippet || 'No description'}\\n${c.link || 'No link'}\\n`\n).join('\\n\\n');\n\nreturn [{\n    json: {\n        companies: companies,\n        summary: companySummary || \"No companies found\",\n        totalCompanies: companies.length\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        0
+      ],
+      "id": "8209985c-a02b-4180-bbbc-c7ebaed4ac3b",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "trim": {
+      "main": [
+        [
+          {
+            "node": "get_lookalikes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "icp_report": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorization": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Mock ICP Companies based on Implisense-ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_companies": {
+      "main": [
+        [
+          {
+            "node": "list_of_companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "serialize_ids": {
+      "main": [
+        [
+          {
+            "node": "trim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Authorization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_lookalikes": {
+      "main": [
+        [
+          {
+            "node": "get_companies",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_of_companies": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate_icp_report": {
+      "main": [
+        [
+          {
+            "node": "icp_report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock ICP Companies based on Implisense-ID": {
+      "main": [
+        [
+          {
+            "node": "serialize_ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "generate_icp_report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "25438b3a-2ab7-4ff9-884e-cc28a5fce7a8",
+  "meta": {
+    "templateId": "11709",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "536cfd7f6dacd395ba5622fd2c3de1b86913d8d41fed377e8bead1e0fd7c43eb"
+  },
+  "id": "zE8IfrzdImJJdJt9",
+  "tags": []
+}

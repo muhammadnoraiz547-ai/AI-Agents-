@@ -1,0 +1,250 @@
+{
+  "name": "Real Time Website Monitoring System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -224,
+        -48
+      ],
+      "id": "a1d0dd17-14a5-4769-a2d1-47f0d65bc373",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://foundervaults.com/",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        -48
+      ],
+      "id": "5d88f46a-1ffa-4dfa-94d2-e9fea1246f25",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6607f0c9-0986-420e-8d9a-5409f4693966",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        -48
+      ],
+      "id": "31d87976-1b71-4718-9608-fdbe1eaf2e16",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0c804031-6e17-486a-9502-f0310a3c7603",
+              "name": "status",
+              "value": "website up",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        -144
+      ],
+      "id": "e8bb50af-943f-4c71-83eb-6420c550c5b7",
+      "name": "website up"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2cf0b30-2155-46d4-bf3e-09a3ce474d9d",
+              "name": "status",
+              "value": "website dwon",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        48
+      ],
+      "id": "9cb9a1f4-fc1d-4abb-9d4b-0ab0563835dd",
+      "name": "website down"
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "website alert",
+        "emailType": "text",
+        "message": "=Hello Admin,\n\n✅ WEBSITE STATUS: ONLINE\n\nWebsite: https://foundervaults.co\nStatus: UP and Running\nLast Checked: {{$now}}\nstatus: {{ $('HTTP Request').item.json.statusMessage }}\n\nYour website is down.\n\n---\nAutomated Monitoring System",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        48
+      ],
+      "id": "667a3b9c-fc11-4bb5-b6dc-997f1bc16c33",
+      "name": "send down message",
+      "webhookId": "5d0bb33c-6993-42f5-a1f0-0b4d200017cf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CGUOq9lng4J1MJLp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "website alert ",
+        "emailType": "text",
+        "message": "=Hello Admin,\n\nThis is an automated alert from your website monitoring system.\n\nWebsite: https://foundervaults.co\nStatus: {{ $('HTTP Request').item.json.statusMessage }}\n\nEverything is ok.\n\nBest regards,\nAutomated Monitoring System",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        -144
+      ],
+      "id": "8f3561ca-cb17-4e58-8455-3f5c950ac284",
+      "name": "send up message",
+      "webhookId": "c735d3f7-63cc-46cf-b6fb-e9bcc20009fb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CGUOq9lng4J1MJLp",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "website up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "website down",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "website up": {
+      "main": [
+        [
+          {
+            "node": "send up message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "website down": {
+      "main": [
+        [
+          {
+            "node": "send down message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "86e53c3c-587b-4a67-be19-91f888ffb581",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "af624f5ddd7bc4fc95c7c653ba3b3839a339688a09dffd08397a4bc0ba82391f"
+  },
+  "id": "p3OtJVw69nsAe3DN",
+  "tags": []
+}

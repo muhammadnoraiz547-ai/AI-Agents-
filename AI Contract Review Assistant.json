@@ -1,0 +1,235 @@
+{
+  "name": "AI Contract Review Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "You are a helpful legal assistant. Your task is to answer legal questions of the users by referring to the Pinecone Vector Database \"Legal Contract Library\" to get an accurate answer. \n#Rule\nDo not make up facts, if you do not have the right information, you may say so."
+        }
+      },
+      "id": "02688535-b356-47b4-a969-b1afe4621dc4",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        544,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "3a470806-3cae-42c2-8a5f-d7d36795157d",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        400,
+        400
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6d942386-f61f-47b4-bde3-d70e19e30be2",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        784,
+        544
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "J0Aj3QF2cZzkHsOo",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "Redacted",
+        "toolDescription": "Extract, contracts, legal policies and relevant regulatory documents here.",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "id",
+          "value": "Redacted"
+        },
+        "options": {}
+      },
+      "id": "c58d0570-3773-4635-b1c6-7c1c551ad334",
+      "name": "Legal Contract Library",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "position": [
+        688,
+        400
+      ],
+      "typeVersion": 1.1,
+      "credentials": {
+        "pineconeApi": {
+          "id": "AjGYtYDOCl8huyno",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "123456789",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "53636e10-2485-4cfc-8b6e-da5910615d0a",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1136,
+        160
+      ],
+      "webhookId": "f8613613-3dcb-4282-9cd6-741727003880",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "XUNyRqv4h7Lngpf3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "6a87cdce-4f33-48bd-ba16-297435a0c91f",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        128,
+        160
+      ],
+      "webhookId": "7451ec47-db51-4b83-92ef-cc37cbf46235",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "XUNyRqv4h7Lngpf3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "id": "2128b27c-b4a5-421d-a064-ae9250ecf753",
+      "name": "Simple Memory1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        560,
+        400
+      ],
+      "typeVersion": 1.3
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Legal Contract Library",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Legal Contract Library": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3fef16da-6168-4c36-87e6-9dd04d600db3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6663fb0ceae351519fb7113786d61d371bf68fe6df92a95cc475ad605725fd5d"
+  },
+  "id": "jJUKs1VoUmLYyDXI",
+  "tags": []
+}

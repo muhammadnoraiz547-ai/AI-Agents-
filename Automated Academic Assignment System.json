@@ -1,0 +1,402 @@
+{
+  "name": "Automated Academic Assignment System",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Assignment Generator",
+        "formDescription": "Fill in the details below. We will generate a professional academic assignment PDF and email it to you.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Student Name",
+              "placeholder": "e.g. Rikza",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Student Email",
+              "fieldType": "email",
+              "placeholder": "student@example.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Assignment Topic",
+              "placeholder": "e.g. Artificial Intelligence in Healthcare",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Course / Subject",
+              "placeholder": "e.g. Computer Science",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Academic Level",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "School"
+                  },
+                  {
+                    "option": "College"
+                  },
+                  {
+                    "option": "Undergraduate"
+                  },
+                  {
+                    "option": "Graduate"
+                  },
+                  {
+                    "option": "Professional"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Additional Instructions",
+              "fieldType": "textarea",
+              "placeholder": "e.g. Include real-world examples and recent applications (optional)"
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Generate Assignment"
+        }
+      },
+      "id": "c540b42c-a7b2-4cd8-bf6e-be5748709e2e",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        96
+      ],
+      "webhookId": "5ca170f2-3e5a-4b77-8511-aff6b2da47e8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst studentName = (d['Student Name'] || d.studentName || '').toString().trim();\nconst studentEmail = (d['Student Email'] || d.studentEmail || '').toString().trim();\nconst topic = (d['Assignment Topic'] || d.topic || '').toString().trim();\nconst subject = (d['Course / Subject'] || d.subject || '').toString().trim();\nconst academicLevel = (d['Academic Level'] || d.academicLevel || '').toString().trim();\nconst instructions = (d['Additional Instructions'] || d.instructions || '').toString().trim();\n\nif (!studentName || !studentEmail || !topic || !subject || !academicLevel) {\n  return [{ json: { success: false, message: 'Please complete all required fields.' } }];\n}\n\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (!emailRegex.test(studentEmail)) {\n  return [{ json: { success: false, message: 'Please provide a valid email address.' } }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    studentName,\n    studentEmail,\n    topic,\n    subject,\n    academicLevel,\n    instructions\n  }\n}];"
+      },
+      "id": "0e1e1ff2-df90-400f-942e-e3147aad61b4",
+      "name": "Validate Form Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert academic assignment writer. Generate a complete, original, well-structured academic assignment.\n\nStudent Name: {{ $json.studentName }}\nTopic: {{ $json.topic }}\nSubject / Course: {{ $json.subject }}\nAcademic Level: {{ $json.academicLevel }}\nAdditional Instructions: {{ $json.instructions || 'None' }}\n\nReturn ONLY a valid JSON object with exactly this structure (no markdown, no code fences, no extra text):\n{\n  \"title\": \"\",\n  \"studentName\": \"\",\n  \"subject\": \"\",\n  \"academicLevel\": \"\",\n  \"introduction\": \"\",\n  \"sections\": [\n    { \"heading\": \"\", \"content\": \"\" }\n  ],\n  \"conclusion\": \"\",\n  \"references\": []\n}\n\nInclude these sections (as items inside the sections array):\n- Background / Definition\n- Main Concepts\n- Detailed Explanation\n- Important Subtopics\n- Advantages\n- Disadvantages\n- Applications / Real-world Examples\n- Challenges\n- Future Scope\n\nMake the content appropriate for the academic level, educational, professional, detailed, and grammatically correct. Do not invent fake academic citations."
+      },
+      "id": "67da83e3-07a8-473e-8202-3ca017122f4d",
+      "name": "Gemini Assignment Generator",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -160,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0.35
+        }
+      },
+      "id": "7eb0ea28-124a-408f-a308-fd65cb98c11f",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        320
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Es0lBHoTz1r5o3j2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\n\nif (prev.success === false) {\n  return [{ json: prev }];\n}\n\nlet raw = '';\nif (typeof prev.text === 'string') raw = prev.text;\nelse if (prev.response) raw = typeof prev.response === 'string' ? prev.response : JSON.stringify(prev.response);\nelse if (prev.output) raw = typeof prev.output === 'string' ? prev.output : JSON.stringify(prev.output);\nelse raw = JSON.stringify(prev);\n\nraw = raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  return [{ json: { success: false, message: 'AI returned invalid assignment data.' } }];\n}\n\nif (!parsed.title || !parsed.introduction || !Array.isArray(parsed.sections) || !parsed.conclusion) {\n  return [{ json: { success: false, message: 'AI returned invalid assignment data.' } }];\n}\n\nif (!Array.isArray(parsed.references)) parsed.references = [];\n\nconst v = $('Validate Form Data').item.json;\n\nreturn [{\n  json: {\n    success: true,\n    title: parsed.title,\n    studentName: parsed.studentName || v.studentName,\n    subject: parsed.subject || v.subject,\n    academicLevel: parsed.academicLevel || v.academicLevel,\n    introduction: parsed.introduction,\n    sections: parsed.sections,\n    conclusion: parsed.conclusion,\n    references: parsed.references,\n    topic: v.topic,\n    studentEmail: v.studentEmail\n  }\n}];"
+      },
+      "id": "8d463e06-d397-49cf-9eb4-b78d3caad157",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.success === false) {\n  return [{ json: data }];\n}\n\nfunction esc(s) {\n  if (s == null) return '';\n  return String(s)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}\n\nconst title = esc(data.title);\nconst studentName = esc(data.studentName);\nconst subject = esc(data.subject);\nconst level = esc(data.academicLevel);\nconst intro = esc(data.introduction).replace(/\\n+/g, '</p><p>');\nconst conclusion = esc(data.conclusion).replace(/\\n+/g, '</p><p>');\n\nlet sectionsHtml = '';\n(data.sections || []).forEach((sec, i) => {\n  const h = esc(sec.heading || `Section ${i+1}`);\n  const c = esc(sec.content || '').replace(/\\n+/g, '</p><p>');\n  sectionsHtml += `<section class=\"section\"><h2>${i+1}. ${h}</h2><p>${c}</p></section>`;\n});\n\nlet refs = '<p>No references listed.</p>';\nif (Array.isArray(data.references) && data.references.length) {\n  refs = '<ol class=\"references\">' + data.references.map(r => `<li>${esc(r)}</li>`).join('') + '</ol>';\n}\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<title>${title}</title>\n<style>\n@page { size: A4; margin: 20mm; }\n* { box-sizing: border-box; }\nbody { font-family: \"Times New Roman\", Times, Georgia, serif; font-size: 12pt; line-height: 1.65; color: #1a1a1a; margin: 0; }\n.page { max-width: 210mm; margin: 0 auto; }\nheader { text-align: center; border-bottom: 2.5px solid #1a365d; padding-bottom: 14px; margin-bottom: 24px; }\nheader h1 { font-size: 20pt; margin: 0 0 10px 0; color: #1a365d; }\n.meta { font-size: 10.5pt; color: #4a5568; line-height: 1.5; }\nh2 { font-size: 13.5pt; color: #1a365d; margin: 20px 0 8px 0; padding-bottom: 3px; border-bottom: 1px solid #cbd5e0; }\np { margin: 0 0 11px 0; text-align: justify; }\n.section { margin-bottom: 6px; }\n.conclusion { margin-top: 26px; padding-top: 12px; border-top: 1px solid #cbd5e0; }\n.references { margin-top: 8px; padding-left: 22px; }\n.references li { margin-bottom: 5px; }\nfooter { margin-top: 30px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #718096; text-align: center; }\n</style>\n</head>\n<body>\n<div class=\"page\">\n<header>\n  <h1>${title}</h1>\n  <div class=\"meta\">\n    Student: ${studentName}<br>\n    Subject: ${subject}<br>\n    Academic Level: ${level}\n  </div>\n</header>\n<section><h2>Introduction</h2><p>${intro}</p></section>\n${sectionsHtml}\n<section class=\"conclusion\"><h2>Conclusion</h2><p>${conclusion}</p></section>\n<section><h2>References</h2>${refs}</section>\n<footer>Generated by AI Assignment Generator · ${new Date().toISOString().slice(0,10)}</footer>\n</div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    success: true,\n    html,\n    studentName: data.studentName,\n    studentEmail: data.studentEmail,\n    topic: data.topic,\n    title: data.title\n  }\n}];"
+      },
+      "id": "6f5ce43a-4804-4085-974f-f3c491137cb3",
+      "name": "Generate Assignment HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdf.co/v1/pdf/convert/from/html",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"html\": {{ JSON.stringify($json.html) }},\n  \"name\": \"{{ $json.studentName.replace(/[^a-zA-Z0-9]/g, '_') }}_Assignment.pdf\",\n  \"paperSize\": \"A4\",\n  \"orientation\": \"Portrait\",\n  \"margins\": \"20mm 20mm 20mm 20mm\",\n  \"printBackground\": true,\n  \"async\": false\n}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "b885aef7-71a3-4be8-983a-798c91d4cb68",
+      "name": "PDF.co - HTML to PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        688,
+        96
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mhOQeSt5BsgcvVbG",
+          "name": "Header Auth account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "27ad3ea8-defa-4374-bc76-e195ff38871c",
+      "name": "Download Generated PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        96
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const pdfNode = $input.first();\nconst htmlNode = $('Generate Assignment HTML').item.json;\nconst validateNode = $('Validate Form Data').item.json;\n\nif (htmlNode.success === false || validateNode.success === false) {\n  return [{ json: { success: false, message: htmlNode.message || validateNode.message || 'Unable to generate the assignment.' } }];\n}\n\nif (!pdfNode.json.url && !pdfNode.binary) {\n  return [{ json: { success: false, message: 'Unable to generate the assignment PDF.' } }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    studentName: htmlNode.studentName,\n    studentEmail: htmlNode.studentEmail,\n    topic: htmlNode.topic,\n    title: htmlNode.title,\n    emailSubject: `Your AI-Generated Assignment: ${htmlNode.topic}`,\n    emailBody: `Hello ${htmlNode.studentName},\\n\\nYour assignment on \"${htmlNode.topic}\" has been successfully generated.\\n\\nPlease find the PDF attached to this email.\\n\\nRegards,\\nAI Assignment Generator`\n  },\n  binary: pdfNode.binary\n}];"
+      },
+      "id": "35635656-3760-4201-b415-5eaa76f4c193",
+      "name": "Prepare Email Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.studentEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "text",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "3e44276b-82b9-4d80-892c-373219c516d8",
+      "name": "Send Assignment Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1520,
+        96
+      ],
+      "webhookId": "f3756fc2-c031-4357-9307-c1731316a475",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1zPbx3lkRrcDwiwk",
+          "name": "Gmail account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Assignment Generated Successfully",
+        "completionMessage": "Your academic assignment PDF has been generated and sent to your email address.\n\nPlease check your inbox (and spam folder).",
+        "options": {
+          "formTitle": "Success"
+        }
+      },
+      "id": "64009ac1-dff3-4570-b6b3-f529bd4243d7",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        96
+      ],
+      "webhookId": "e80296fe-5d1c-498d-b601-6873025c8b5f"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Form Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Form Data": {
+      "main": [
+        [
+          {
+            "node": "Gemini Assignment Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Gemini Assignment Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Assignment Generator": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Generate Assignment HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Assignment HTML": {
+      "main": [
+        [
+          {
+            "node": "PDF.co - HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF.co - HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "Download Generated PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Generated PDF": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Data": {
+      "main": [
+        [
+          {
+            "node": "Send Assignment Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Assignment Email": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0712883d-b6a7-47d0-be4a-82ed0ff8cb39",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f117c48b5ac7fa56eb21cf2c3e07d3d95eb84ac376ecaefe63935a1d0499838"
+  },
+  "nodeGroups": [],
+  "id": "QIgGIBL0cWWHbttU",
+  "tags": []
+}

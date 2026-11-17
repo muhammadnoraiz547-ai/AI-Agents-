@@ -1,0 +1,245 @@
+{
+  "name": "AI Cooking Assistant Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "090b4001-cbbe-48c5-b29b-1604f09d57d6",
+      "name": "When chat message received",
+      "webhookId": "707f8e46-b31f-4135-aa74-2d399cbdf437"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "<AgentInstructions>\n  <Role>\n    <name>RecipeGeneratorAgent</name>\n    <description>A helpful cooking assistant that generates custom recipes.</description>\n  </Role>\n  <Goal>\n    <Primary>Provide a complete recipe including ingredients and step-by-step instructions based on the user's requested dish.</Primary>\n  </Goal>\n  <Instructions>\n    <Instruction>Once you receive the user's dish name note them down carefully.</Instruction>\n    <Instruction>Generate a list of ingredients with accurate quantities tailored to the specified serving size.</Instruction>\n    <Instruction>Provide clear, step-by-step instructions on how to prepare the dish.</Instruction>\n    <Instruction>Where applicable, include cooking times, tips, or variations to enhance the recipe.</Instruction>\n  </Instructions>\n</AgentInstructions>\n\n<Examples>\n  <Example>\n    <Userinput>egg cheese omelette recipe</Userinput>\n    <Useroutput>\n{\n  \"recipe_name\": \"Cheese Omelette\",\n  \"description\": \"A quick and delicious cheese omelette made with fluffy eggs and melted cheese, perfect for a hearty breakfast.\",\n  \"category\": \"Breakfast\",\n  \"servings\": 1,\n  \"prep_time_minutes\": 5,\n  \"cook_time_minutes\": 5,\n\n  \"ingredients\": \"2 large eggs; 2 tablespoons milk (optional, for a fluffier omelette); salt to taste; black pepper to taste; 1 tablespoon butter or oil; 1/4 cup shredded cheese (cheddar, mozzarella, or any preferred cheese); optional add-ins: chopped herbs (chives or parsley), diced vegetables (bell peppers, onions, tomatoes), cooked meats (ham or bacon).\",\n\n  \"instructions\": \"1. Beat the eggs: In a bowl, whisk together the eggs, milk (if using), salt, and pepper until well combined. 2. Prepare the pan: Heat a non-stick skillet over medium heat and melt the butter so it coats the bottom of the pan. 3. Cook the eggs: Pour the beaten eggs into the skillet and cook undisturbed for about 1–2 minutes until the edges begin to set. 4. Add the cheese: Sprinkle the shredded cheese and any optional ingredients over one half of the omelette. 5. Fold the omelette: Once the eggs are mostly set but slightly runny on top, fold the omelette in half using a spatula. 6. Finish cooking: Cook for another 1–2 minutes until the cheese melts and the eggs are fully cooked. 7. Serve: Slide the omelette onto a plate and garnish with herbs if desired.\",\n\n  \"tips\": \"Beat the eggs vigorously to create a fluffier omelette. Adding a splash of milk helps make the omelette softer and lighter. Try different cheeses and vegetables to customize the flavor.\"\n}\n    </Useroutput>\n  </Example>\n</Examples>"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        256,
+        0
+      ],
+      "id": "ae5a4308-88f7-4715-be5e-2224ad702bd7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        208
+      ],
+      "id": "d99267e4-cf36-4ae9-a3c2-1cdf89b9ac84",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "XMZkorhZq140vdqE",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app1jVbxBF8UerItH",
+          "mode": "list",
+          "cachedResultName": "Recipe dashboard",
+          "cachedResultUrl": "https://airtable.com/app1jVbxBF8UerItH"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblPQ91r1r70L4FXE",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/app1jVbxBF8UerItH/tblPQ91r1r70L4FXE"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Recipe name": "={{ $json.output.recipe_name }}",
+            "Ingredients": "={{ $json.output.ingredients }}",
+            "Instructions": "={{ $json.output.instructions }}",
+            "Tips": "={{ $json.output.tips }}",
+            "Description": "={{ $json.output.description }}"
+          },
+          "matchingColumns": [
+            "Recipe details"
+          ],
+          "schema": [
+            {
+              "id": "Recipe name",
+              "displayName": "Recipe name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Ingredients",
+              "displayName": "Ingredients",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Instructions",
+              "displayName": "Instructions",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Tips",
+              "displayName": "Tips",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        608,
+        0
+      ],
+      "id": "01ad2497-7a68-4f0c-aac8-3f5a55d5e386",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "UXu5ss4M5lBTW1Yt",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"recipe_name\": \"Cheese Omelette\",\n  \"description\": \"A quick and delicious cheese omelette made with fluffy eggs and melted cheese, perfect for a hearty breakfast.\",\n  \"category\": \"Breakfast\",\n  \"servings\": 1,\n  \"prep_time_minutes\": 5,\n  \"cook_time_minutes\": 5,\n\n  \"ingredients\": \"2 large eggs; 2 tablespoons milk (optional, for a fluffier omelette); salt to taste; black pepper to taste; 1 tablespoon butter or oil; 1/4 cup shredded cheese (cheddar, mozzarella, or any preferred cheese); optional add-ins: chopped herbs (chives or parsley), diced vegetables (bell peppers, onions, tomatoes), cooked meats (ham or bacon).\",\n\n  \"instructions\": \"1. Beat the eggs: In a bowl, whisk together the eggs, milk (if using), salt, and pepper until well combined. 2. Prepare the pan: Heat a non-stick skillet over medium heat and melt the butter so it coats the bottom of the pan. 3. Cook the eggs: Pour the beaten eggs into the skillet and cook undisturbed for about 1–2 minutes until the edges begin to set. 4. Add the cheese: Sprinkle the shredded cheese and any optional ingredients over one half of the omelette. 5. Fold the omelette: Once the eggs are mostly set but slightly runny on top, fold the omelette in half using a spatula. 6. Finish cooking: Cook for another 1–2 minutes until the cheese melts and the eggs are fully cooked. 7. Serve: Slide the omelette onto a plate and garnish with herbs if desired.\",\n\n  \"tips\": \"Beat the eggs vigorously to create a fluffier omelette. Adding a splash of milk helps make the omelette softer and lighter. Try different cheeses and vegetables to customize the flavor.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        208
+      ],
+      "id": "c12827fb-8cc3-4b7e-8c82-12666521c816",
+      "name": "Structured Output Parser"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        []
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "da2152de-bd7e-4396-9470-0002ff4eb0ae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2bc775e73781549d1441319a643274eb678f139d0499fe5fe42cb7f083e3742d"
+  },
+  "id": "tvFGoNKKMxKa7Ace",
+  "tags": []
+}

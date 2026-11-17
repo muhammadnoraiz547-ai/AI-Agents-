@@ -1,0 +1,327 @@
+{
+  "name": "Email reply agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4c9db696-d84e-4197-9abc-06b0c67e6ef0",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 5,
+        "filters": {
+          "labelIds": [
+            "UNREAD"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "315b20a8-ef82-4d07-bd68-36d007746a62",
+      "name": "Gmail All Mails",
+      "webhookId": "0e402c74-d3b1-4113-85a4-4d1389352160",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "fgXb8uvfYMMgcNF1",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.threadId }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "05b21343-0f1f-41cf-9de6-5808b8956626",
+      "name": "Gmail all details",
+      "webhookId": "b3744aac-0428-4b21-ac03-619434e53528",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "fgXb8uvfYMMgcNF1",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=subject:  {{ $json.headers.subject }}\n\nEmail body:  {{ $json.text }}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "<AgentInstructions>\n\n<Role>\n    <name> Email Reply Agent </name>\n    <Description> A Helpful email reply Agent </Description>\n</Role>\n\n<Goal>\n    <primary> Draft custom but very professional email replies which are 100% humanlike. </primary>\n    <Secondary> As an Email reply agent you should not only reply but also build trust and Reputation with the person you're replying </Secondary>\n</Goal>\n\n<Instructions>\n    <Instruction> Once you recieve the email, you should thoroughly understand and analyse the subject line and full email body message </Instruction>\n    \n    <Instruction> After you read the email, Review <Details> and <Aims> to understand the context of the user before drafting a reply </Instruction>\n    \n    <Instruction> Draft a professional Reply using <UserInfo>. Use Age where necessary </Instruction>\n</Instructions>\n\n<UserInfo>\n\n<Details>\n    <Detail name=\"User Name\"> crazydude </Detail>\n    <Detail name=\"Company\"> AI Learners  </Detail>\n    <Detail name=\"Age\"> 25 </Detail>\n    <Detail name=\"Contact info\"> 03006406245 </Detail>\n</Details>\n\n<Aims>\n    <Aim name=\"Mission\"> Wants to teach AI to people in the most simplest way. </Aim>\n    <Aim name=\"Focus\"> Rightnow focusing more on Teaching rather than Collabs and Promotions. </Aim>\n    <Aim name=\"Community Focus\"> Focus on Community Right now </Aim>\n</Aims>\n\n</UserInfo>\n\n<Examples>\n<example>\n<UserInput>\nSubject: Promotional message\n\nThis message regarding a promotion that we are going on doing\n</UserInput>\n\n<UserOutput>\nSubject: Re: Promotional Message\n\nDear [Name],\n\nThank you for reaching out and sharing the details about your ongoing promotion. I appreciate you taking the time to inform me about this opportunity.\n\nAt the moment, I would like to review the details of the promotion to better understand how it works and what it offers. Could you please share any additional information, such as the benefits, duration, and any requirements involved?\n\nI look forward to learning more about it.\n\nBest regards,  \n[Your Name]\n</UserOutput>\n</example>\n<example>\n<UserInput>\nSubject: Your Project’s First Visitor \n\nWe’re excited to let you know that your project has received its very first visitor and is now officially live!\n</UserInput>\n\n<UserOutput>\nSubject: Re: Your Project’s First Visitor \n\nDear Team,\n\nThank you for the exciting update and for sharing the great news. It’s encouraging to know that the project has officially received its first visitor and is now live.\n\nI appreciate the support and enthusiasm from your side. It’s a great milestone and a motivating step forward. I’ll be sure to check out the project and look forward to seeing how it continues to grow and attract more visitors.\n\nThanks again for the update and for being part of this journey.\n\nBest regards,  \n[Your Name]\n</UserOutput>\n</example>\n</Examples>\n\n</AgentInstructions>"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "c2041c48-9f79-4d92-bc3c-99a5de0c908f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appbv2mvFJKQQUyRr",
+          "mode": "list",
+          "cachedResultName": "test",
+          "cachedResultUrl": "https://airtable.com/appbv2mvFJKQQUyRr"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnLLiBAFzDupnRZ",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appbv2mvFJKQQUyRr/tblnLLiBAFzDupnRZ"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Sender name": "={{ $('Gmail all details').item.json.from.value[0].name }}",
+            "From email": "={{ $('Gmail all details').item.json.from.value[0].address }}",
+            "Email body": "={{ $('Gmail all details').item.json.text }}",
+            "Body draft reply": "={{ $json.output }}",
+            "Thread id": "={{ $('Gmail all details').item.json.threadId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Sender name",
+              "displayName": "Sender name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "From email",
+              "displayName": "From email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email body",
+              "displayName": "Email body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Body draft reply",
+              "displayName": "Body draft reply",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Thread id",
+              "displayName": "Thread id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "0cf16883-a9e9-4cc9-8415-339e6af630bf",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "sM3svMmdpiKTqYHX",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail all details').item.json.threadId }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "cdc99c92-8f5e-4b4f-af0a-5a304b497eba",
+      "name": "Mark a message as read",
+      "webhookId": "e14b815a-2245-4fc0-ad13-cad441fd1b32",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "fgXb8uvfYMMgcNF1",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        544,
+        208
+      ],
+      "id": "10fb7a33-7667-45c5-aab4-4d606abec490",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "JcraUW500DuLPkBH",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Gmail All Mails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail All Mails": {
+      "main": [
+        [
+          {
+            "node": "Gmail all details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail all details": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "12bd225c-562f-46bc-a860-8a654fa2d425",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "566324b5d727d20fd04b6c946858bf5c8e06bc42915784a4437889156051fd15"
+  },
+  "id": "oSFcNA8VQQSIavpl",
+  "tags": []
+}

@@ -1,0 +1,839 @@
+{
+  "name": "HR & Finance Intelligent Agent - that reduces human errors and time",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "3678f16b-1cc5-4419-8e33-4c5477b00dc7",
+      "name": "Every 1st of Month",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -4112,
+        2848
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw",
+          "mode": "list",
+          "cachedResultName": "HR_Finance_Template",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 973333520,
+          "mode": "list",
+          "cachedResultName": "Active Employees",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit#gid=973333520"
+        },
+        "options": {}
+      },
+      "id": "36e42626-9706-46e5-aaee-525f4598b578",
+      "name": "Read Active Employees",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -3904,
+        2848
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-emp-check",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "de462c5f-3f75-4bdf-9a8d-1acddcfa6cec",
+      "name": "Any Employees Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3712,
+        2848
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "⚠️ No Active Employees Found - Monthly Run",
+        "emailType": "text",
+        "message": "No active employees were found on {{ $now.format('yyyy-MM-dd') }}. Please check the 'Active Employees' sheet.",
+        "options": {}
+      },
+      "id": "08084b2d-bc6e-4805-98ed-f738580fe9a8",
+      "name": "Alert No Employees",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -3504,
+        3040
+      ],
+      "webhookId": "d2545b76-0245-4644-8bef-8d13c0fe6dcb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pH5JcAUhhw30WhCy",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "8b84f394-9484-46ea-a024-2881e7e98f98",
+      "name": "Loop Over Employees",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3504,
+        2640
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw",
+          "mode": "list",
+          "cachedResultName": "HR_Finance_Template",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1062615435,
+          "mode": "list",
+          "cachedResultName": "Salary Records",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit#gid=1062615435"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Employee ID",
+              "lookupValue": "={{ $json['Employee ID'] }}"
+            },
+            {
+              "lookupColumn": "Month",
+              "lookupValue": "={{ $now.format('yyyy-MM') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b802d56d-42f5-4d4d-99b5-df15a20038a6",
+      "name": "Check Duplicate Salary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "position": [
+        -3312,
+        2640
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-empid",
+              "name": "Employee ID",
+              "type": "string",
+              "value": "={{ $('Loop Over Employees').item.json['Employee ID'] }}"
+            },
+            {
+              "id": "f-name",
+              "name": "Name",
+              "type": "string",
+              "value": "={{ $('Loop Over Employees').item.json['Name'] }}"
+            },
+            {
+              "id": "f-email",
+              "name": "Email",
+              "type": "string",
+              "value": "={{ $('Loop Over Employees').item.json['Email'] }}"
+            },
+            {
+              "id": "f-dept",
+              "name": "Department",
+              "type": "string",
+              "value": "={{ $('Loop Over Employees').item.json['Department'] }}"
+            },
+            {
+              "id": "f-base",
+              "name": "Base Salary",
+              "type": "number",
+              "value": "={{ Number($('Loop Over Employees').item.json['Base Salary']) }}"
+            },
+            {
+              "id": "f-bonus",
+              "name": "Bonus",
+              "type": "number",
+              "value": "={{ Number($('Loop Over Employees').item.json['Bonus'] || 0) }}"
+            },
+            {
+              "id": "f-deduct",
+              "name": "Deductions",
+              "type": "number",
+              "value": "={{ Number($('Loop Over Employees').item.json['Deductions'] || 0) }}"
+            },
+            {
+              "id": "f-net",
+              "name": "Net Salary",
+              "type": "number",
+              "value": "={{ Number($('Loop Over Employees').item.json['Base Salary']) + Number($('Loop Over Employees').item.json['Bonus'] || 0) - Number($('Loop Over Employees').item.json['Deductions'] || 0) }}"
+            },
+            {
+              "id": "f-month",
+              "name": "Month",
+              "type": "string",
+              "value": "={{ $now.format('yyyy-MM') }}"
+            },
+            {
+              "id": "f-status",
+              "name": "Status",
+              "type": "string",
+              "value": "Unpaid"
+            },
+            {
+              "id": "f-date",
+              "name": "Date Generated",
+              "type": "string",
+              "value": "={{ $now.format('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "46dfb20a-9f68-41df-a4a5-8ca6bd39d8d4",
+      "name": "Build Salary Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2912,
+        2544
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw",
+          "mode": "list",
+          "cachedResultName": "HR_Finance_Template",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Salary Records"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Employee ID": "={{ $json['Employee ID'] }}",
+            "Name": "={{ $json['Name'] }}",
+            "Email": "={{ $json['Email'] }}",
+            "Department": "={{ $json['Department'] }}",
+            "Base Salary": "={{ $json['Base Salary'] }}",
+            "Bonus": "={{ $json['Bonus'] }}",
+            "Deductions": "={{ $json['Deductions'] }}",
+            "Net Salary": "={{ $json['Net Salary'] }}",
+            "Month": "={{ $json['Month'] }}",
+            "Status": "={{ $json['Status'] }}",
+            "Date Generated": "={{ $json['Date Generated'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Employee ID",
+              "displayName": "Employee ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Base Salary",
+              "displayName": "Base Salary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bonus",
+              "displayName": "Bonus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deductions",
+              "displayName": "Deductions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Net Salary",
+              "displayName": "Net Salary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Month",
+              "displayName": "Month",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date Generated",
+              "displayName": "Date Generated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "50b66400-d11f-487b-a14d-6958ee1748c5",
+      "name": "Append Salary to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2704,
+        2544
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Build Salary Record').item.json['Email'] }}",
+        "subject": "=💰 Your Salary Slip - {{ $now.format('MMMM yyyy') }}",
+        "emailType": "text",
+        "message": "=Dear {{ $json['Name'] }},\n\nHere is your salary slip for {{ $json['Month'] }}:\n\n----------------------------\nEmployee ID   : {{ $json['Employee ID'] }}\nDepartment    : {{ $json['Department'] }}\n----------------------------\nBase Salary   : {{ $json['Base Salary'] }}\nBonus         : {{ $json['Bonus'] }}\nDeductions    : {{ $json['Deductions'] }}\n----------------------------\nNET SALARY    : {{ $json['Net Salary'] }}\n----------------------------\nStatus        : {{ $json['Status'] }}\nDate          : {{ $json['Date Generated'] }}\n\nRegards,\nHR & Finance Team",
+        "options": {}
+      },
+      "id": "db80fd76-8489-4d6c-8541-e52a7096eb00",
+      "name": "Email Salary Slip to Employee",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -2512,
+        2544
+      ],
+      "webhookId": "13851c96-5b50-47cf-afe7-5d2a7cfb253c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pH5JcAUhhw30WhCy",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw",
+          "mode": "list",
+          "cachedResultName": "HR_Finance_Template",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 269104987,
+          "mode": "list",
+          "cachedResultName": "Monthly Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit#gid=269104987"
+        },
+        "options": {}
+      },
+      "id": "ef28347c-fcb5-4a01-bc85-aa2a049465b7",
+      "name": "Read All Salary This Month",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2864,
+        2288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw",
+          "mode": "list",
+          "cachedResultName": "HR_Finance_Template",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 269104987,
+          "mode": "list",
+          "cachedResultName": "Monthly Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zeCIV47hpFwK8wVKcyLhxHvkj93lABRMwCUkaEXNGnw/edit#gid=269104987"
+        },
+        "options": {}
+      },
+      "id": "b30267ea-7bbc-47f7-a00a-756a459e0a55",
+      "name": "Read Monthly Expenses",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2608,
+        2288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cTqjG22uRP6zF89E",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sum-month",
+              "name": "Month",
+              "type": "string",
+              "value": "={{ $now.format('yyyy-MM') }}"
+            },
+            {
+              "id": "sum-generated",
+              "name": "Generated On",
+              "type": "string",
+              "value": "={{ $now.format('yyyy-MM-dd HH:mm') }}"
+            },
+            {
+              "id": "sum-total-emp",
+              "name": "Total Employees",
+              "type": "number",
+              "value": "={{ $('Read Active Employees').all().length }}"
+            },
+            {
+              "id": "sum-total-salary",
+              "name": "Total Salary Paid",
+              "type": "number",
+              "value": "={{ $('Read All Salary This Month').all().reduce((sum, item) => sum + Number(item.json['Net Salary'] || 0), 0) }}"
+            },
+            {
+              "id": "sum-total-unpaid",
+              "name": "Total Unpaid",
+              "type": "number",
+              "value": "={{ $('Read All Salary This Month').all().filter(item => item.json['Status'] === 'Unpaid').length }}"
+            },
+            {
+              "id": "sum-total-expenses",
+              "name": "Total Expenses",
+              "type": "number",
+              "value": "={{ $('Read Monthly Expenses').all().reduce((sum, item) => sum + Number(item.json['Amount'] || 0), 0) }}"
+            },
+            {
+              "id": "sum-grand-total",
+              "name": "Grand Total Cost",
+              "type": "number",
+              "value": "={{ $('Read All Salary This Month').all().reduce((sum, item) => sum + Number(item.json['Net Salary'] || 0), 0) + $('Read Monthly Expenses').all().reduce((sum, item) => sum + Number(item.json['Amount'] || 0), 0) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d3eb4677-33c8-4d09-9e01-ecc9f7b311e0",
+      "name": "Build Summary Stats",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=📊 Monthly Finance Report - {{ $now.format('MMMM yyyy') }}",
+        "emailType": "text",
+        "message": "=Hi Finance Manager,\n\nHere is the complete financial summary for {{ $json['Month'] }}:\n\n============================\n       SALARY SUMMARY\n============================\nTotal Employees     : {{ $json['Total Employees'] }}\nTotal Salary Paid   : {{ $json['Total Salary Paid'] }}\nTotal Unpaid        : {{ $json['Total Unpaid'] }}\n\n============================\n       EXPENSE SUMMARY\n============================\nTotal Expenses      : {{ $json['Total Expenses'] }}\n\n============================\nGRAND TOTAL COST    : {{ $json['Grand Total Cost'] }}\n============================\n\nGenerated On: {{ $json['Generated On'] }}\n\nRegards,\nAutomation Bot",
+        "options": {}
+      },
+      "id": "000ed130-83b1-404e-825a-266eb3642727",
+      "name": "Email Finance Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1968,
+        2240
+      ],
+      "webhookId": "72f9d5ff-9153-40d9-bedd-2f3c9a5fe69a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pH5JcAUhhw30WhCy",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadnoraiz547@gmail.com",
+        "subject": "=📋 Monthly HR Report - {{ $now.format('MMMM yyyy') }}",
+        "emailType": "text",
+        "message": "=Hi HR Manager,\n\nHere is the HR summary for {{ $json['Month'] }}:\n\n============================\n       HR SUMMARY\n============================\nTotal Active Employees  : {{ $json['Total Employees'] }}\nTotal Salary Processed  : {{ $json['Total Salary Paid'] }}\nUnpaid Salaries         : {{ $json['Total Unpaid'] }}\n\n============================\n       COMPANY EXPENSES\n============================\nTotal Monthly Expenses  : {{ $json['Total Expenses'] }}\n\nGenerated On: {{ $json['Generated On'] }}\n\nRegards,\nAutomation Bot",
+        "options": {}
+      },
+      "id": "2e98fd3f-6626-4019-aa2c-42a70dc30ede",
+      "name": "Email HR Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1952,
+        2496
+      ],
+      "webhookId": "74dd0e5a-7264-4d42-9242-f171e63ae4fd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pH5JcAUhhw30WhCy",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-new-record",
+              "leftValue": "={{ $input.all().filter(i => i.json['Employee ID']).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "53a8e9e9-25df-46a2-8775-2a211b51caf3",
+      "name": "Is New Record1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3104,
+        2640
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -2416,
+        2320
+      ],
+      "id": "625988fc-7fe7-45c5-be60-c0f35671179f",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 1st of Month": {
+      "main": [
+        [
+          {
+            "node": "Read Active Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Active Employees": {
+      "main": [
+        [
+          {
+            "node": "Any Employees Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Employees Found": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Employees",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert No Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Employees": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate Salary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read All Salary This Month",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate Salary": {
+      "main": [
+        [
+          {
+            "node": "Is New Record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Salary Record": {
+      "main": [
+        [
+          {
+            "node": "Append Salary to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Salary to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Email Salary Slip to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Salary Slip to Employee": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read All Salary This Month": {
+      "main": [
+        [
+          {
+            "node": "Read Monthly Expenses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Monthly Expenses": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Stats": {
+      "main": [
+        [
+          {
+            "node": "Email Finance Manager",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email HR Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Record1": {
+      "main": [
+        [
+          {
+            "node": "Build Salary Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Build Summary Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "67f6141c-9f3e-4db6-901a-d1a751d55daa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aaea7183e39683ce155401f4fda51255a8820d25184b8a19d6242f7839f567bb"
+  },
+  "nodeGroups": [],
+  "id": "cRHwlq25HewPTeb3",
+  "tags": []
+}

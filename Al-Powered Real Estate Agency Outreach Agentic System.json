@@ -1,0 +1,1115 @@
+{
+  "name": "Al-Powered Real Estate Agency Outreach Agentic System",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2160,
+        256
+      ],
+      "id": "ae932be5-cb33-49c5-b170-db49d42b2c28",
+      "name": "🚀 Start Agency Outreach"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc",
+          "mode": "list",
+          "cachedResultName": "b2b",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 461540058,
+          "mode": "list",
+          "cachedResultName": "Agency Prospects",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc/edit#gid=461540058"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2288,
+        16
+      ],
+      "id": "2d326703-d531-4d65-8d36-9887801758a2",
+      "name": "📋 Fetch Agency Prospects",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "I7jbU0xJ7UcT8z0q",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "294c5242-f24a-43f6-88be-4376f64ef5d6",
+              "name": "Date",
+              "value": "={{ $now.setZone('Asia/Karachi').toFormat('dd-MM-yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "2a0fffb5-05fa-4cba-b8a1-cfc5f3f4b78d",
+              "name": "Time",
+              "value": "={{ $now.setZone('Asia/Karachi').toFormat('HH:mm:ss') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2064,
+        16
+      ],
+      "id": "7af48c8f-b20d-44f4-9ad0-807ab8ffd99f",
+      "name": "🕐 Set Processed Timestamp"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "761fe111-9649-40c3-9d06-a6c9c4cd168b",
+              "leftValue": "={{ $('📋 Fetch Agency Prospects').item.json.Status }}",
+              "rightValue": "Pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1840,
+        16
+      ],
+      "id": "e17355cd-4cc1-4010-ab4a-2b4b4c53c9df",
+      "name": "🔍 Is Prospect Status Pending?"
+    },
+    {
+      "parameters": {
+        "query": "=Research real estate agency: {{ $('📋 Fetch Agency Prospects').item.json.Agency }}\nWebsite: {{ $('📋 Fetch Agency Prospects').item.json.Website }}\n\nFind:\n- Number of agents / team size\n- Areas served / listing volume\n- CRM or software currently used\n- Lead sources (Zillow, Facebook Ads, referrals, walk-in)\n- Recent expansion, new branches, or awards\n- Any mention of manual/slow lead response process",
+        "options": {
+          "search_depth": "advanced",
+          "max_results": 5,
+          "include_answer": "basic",
+          "include_raw_content": false,
+          "include_images": true
+        }
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        -1616,
+        16
+      ],
+      "id": "00065c6f-475d-4890-88bd-58b52a9cb3b6",
+      "name": "🌐 Search Agency Info (Tavily)",
+      "credentials": {
+        "tavilyApi": {
+          "id": "BfqWh542P4Ka0KAG",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<agent>\n<role>Expert Real Estate Agency Research Analyst</role>\n<objective>Analyze the research and extract structured intelligence about this real estate agency for downstream qualification and outreach.</objective>\n<research_data>\nAgency Name: {{ $('📋 Fetch Agency Prospects').item.json.Agency }}\nWebsite: {{ $('📋 Fetch Agency Prospects').item.json.Website }}\nResearch: {{ $json.answer }}\n</research_data>\n<instructions>\n<instruction>Never invent or assume information. Return \"Unknown\" if unavailable.</instruction>\n<instruction>Extract agency name and website exactly as provided.</instruction>\n<instruction>Estimate agency size using only: Solo Agent, Small Team (2-10 agents), Mid-Size Brokerage (11-50 agents), Large Brokerage (50+ agents).</instruction>\n<instruction>Identify areas/cities served.</instruction>\n<instruction>Identify current CRM or tools used, if mentioned.</instruction>\n<instruction>Identify primary lead sources (Zillow, Facebook Ads, referrals, walk-ins, etc.).</instruction>\n<instruction>Summarize the agency in 2-3 concise sentences.</instruction>\n<instruction>Identify up to 3 operational pain points relevant to lead response speed, CRM usage, showing scheduling, or manual follow-up.</instruction>\n<instruction>Identify one recent growth signal (new branch, hiring, award, expansion).</instruction>\n<instruction>Identify one automation opportunity (WhatsApp lead response, CRM automation, showing scheduler, nurture sequences).</instruction>\n<instruction>Return valid JSON only. Do not return markdown.</instruction>\n</instructions>\n</agent>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1392,
+        16
+      ],
+      "id": "83806c03-2207-4b07-acec-94beafd41a80",
+      "name": "🏢 Agency Intelligence Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1376,
+        240
+      ],
+      "id": "1bb1ce0f-f046-4b88-be9c-28d3fe435d6c",
+      "name": "🧠 Agency Research Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SgnIooPwKgcp8TUI",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"agency_name\": \"Prime Realty Group\",\n  \"agency_website\": \"https://primerealty.com\",\n  \"agency_size\": \"Mid-Size Brokerage (11-50 agents)\",\n  \"areas_served\": [\n    \"DHA Lahore\",\n    \"Bahria Town\"\n  ],\n  \"current_tools\": [\n    \"Excel\",\n    \"WhatsApp\"\n  ],\n  \"lead_sources\": [\n    \"Facebook Ads\",\n    \"Zillow\",\n    \"Referrals\"\n  ],\n  \"summary\": \"Prime Realty Group is a growing residential brokerage serving Lahore's premium societies.\",\n  \"key_pain_points\": [\n    \"Slow manual lead follow-up\",\n    \"No centralized CRM\",\n    \"Missed showing schedules\"\n  ],\n  \"recent_growth_signal\": \"Opened a second branch office in Bahria Town.\",\n  \"automation_opportunity\": \"AI-powered WhatsApp lead response and CRM automation\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1248,
+        240
+      ],
+      "id": "a196edc9-1888-45e5-b91d-8893156e803c",
+      "name": "📄 Agency Research Data"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=```xml\n<agent>\n<role>Expert ICP Qualification Specialist for AI Automation services sold to Real Estate Agencies (WhatsApp lead response, CRM automation, showing scheduling, nurture automation).</role>\n<objective>Evaluate whether this agency is an Ideal Customer Profile, score it, and recommend the best next action.</objective>\n<agency_research>{{ JSON.stringify($('🏢 Agency Intelligence Agent').item.json.output) }}</agency_research>\n<instructions>\n<instruction>Analyze only the provided research. Never invent information.</instruction>\n<instruction>Evaluate every scoring category independently, integers 0-20.</instruction>\n<instruction>Calculate overall_score out of 100 and qualification_confidence 0-100.</instruction>\n<instruction>Recommend the single highest-value automation opportunity.</instruction>\n<instruction>Recommend the best department/contact and job title (e.g. Broker/Owner, Team Lead, Operations Manager, Marketing Manager).</instruction>\n<instruction>Assign priority_level: High, Medium, or Low.</instruction>\n<instruction>Recommend next_action: Proceed to Lead Finder, Manual Review, or Reject.</instruction>\n<instruction>Keep reason under 60 words.</instruction>\n<instruction>Return ONLY valid JSON, no markdown.</instruction>\n</instructions>\n<evaluation_criteria>\n<agency_size_fit max=\"20\">Higher score for Small Team to Large Brokerage (2+ agents). Solo agents score lower (less budget/need).</agency_size_fit>\n<manual_process_severity max=\"20\">Higher score when Excel/WhatsApp/manual follow-up is evident and no CRM is used.</manual_process_severity>\n<lead_volume_signal max=\"20\">Higher score for agencies running paid ads (Facebook/Zillow) implying high inbound lead volume.</lead_volume_signal>\n<growth_momentum max=\"20\">Higher score for agencies expanding branches, hiring agents, or recently launched.</growth_momentum>\n<budget_likelihood max=\"20\">Higher score for Mid-Size/Large Brokerages with visible marketing spend.</budget_likelihood>\n</evaluation_criteria>\n<qualification_rules>Qualified: overall_score >= 75 AND qualification_confidence >= 70. Borderline: overall_score 60-74. Not Qualified: overall_score < 60.</qualification_rules>\n</agent>\n```",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1040,
+        16
+      ],
+      "id": "6cbf36db-190b-4267-b308-75622242f2c3",
+      "name": "🎯 ICP Qualification Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1024,
+        240
+      ],
+      "id": "dd524c30-8648-40d4-89b7-b61331db75a6",
+      "name": "🧠 ICP Scoring Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SgnIooPwKgcp8TUI",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"agency_name\": \"Prime Realty Group\",\n  \"agency_size_fit_score\": 18,\n  \"manual_process_severity_score\": 19,\n  \"lead_volume_signal_score\": 17,\n  \"growth_momentum_score\": 16,\n  \"budget_likelihood_score\": 15,\n  \"overall_score\": 85,\n  \"qualification_confidence\": 82,\n  \"qualified\": true,\n  \"qualification_status\": \"Qualified\",\n  \"automation_opportunity\": \"AI WhatsApp lead response + CRM automation\",\n  \"recommended_service\": \"AI Lead Response & CRM Automation for Real Estate\",\n  \"recommended_contact_department\": \"Operations\",\n  \"recommended_job_title\": \"Broker/Owner\",\n  \"priority_level\": \"High\",\n  \"next_action\": \"Proceed to Lead Finder\",\n  \"reason\": \"Growing brokerage relying on manual WhatsApp/Excel follow-up with high paid-ad lead volume \\u2014 strong automation fit.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -896,
+        240
+      ],
+      "id": "313e5c4f-6172-43ec-bf1e-1baacf39f54e",
+      "name": "📄 ICP Score"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "45bf0402-1a01-48e7-a614-293249fa1d20",
+              "leftValue": "={{ $json.output.qualified }}",
+              "rightValue": {},
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -688,
+        16
+      ],
+      "id": "d5cc88b1-bac0-4437-8f64-a2131ff113b9",
+      "name": "🔀 Qualified Agency Router"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc",
+          "mode": "list",
+          "cachedResultName": "b2b",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 461540058,
+          "mode": "list",
+          "cachedResultName": "Agency Prospects",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc/edit#gid=461540058"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Agency": "={{ $json.output.agency_name }}",
+            "Website": "={{ $('🏢 Agency Intelligence Agent').item.json.output.agency_website }}",
+            "Status": "=Rejected",
+            "ICP Score": "={{ $('🎯 ICP Qualification Agent').item.json.output.overall_score }}",
+            "Rejection Reason": "={{ $('🎯 ICP Qualification Agent').item.json.output.reason }}",
+            "Processed Date": "={{ $('🕐 Set Processed Timestamp').item.json.Date }}"
+          },
+          "matchingColumns": [
+            "Agency"
+          ],
+          "schema": [
+            {
+              "id": "Agency",
+              "displayName": "Agency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ICP Score",
+              "displayName": "ICP Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rejection Reason",
+              "displayName": "Rejection Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subject Line",
+              "displayName": "Subject Line",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -464,
+        208
+      ],
+      "id": "38792690-f59a-4195-bd96-bcd2d5204429",
+      "name": "❌ Mark Prospect as Rejected",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "I7jbU0xJ7UcT8z0q",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ $json.output.agency_name }} broker owner leadership team",
+        "options": {
+          "topic": "general",
+          "search_depth": "advanced",
+          "max_results": 5,
+          "include_answer": "basic",
+          "include_raw_content": false,
+          "include_images": true
+        }
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -176
+      ],
+      "id": "78fdce13-a5c5-4f53-af3e-618422a82318",
+      "name": "🔎 Search Agency Leadership",
+      "credentials": {
+        "tavilyApi": {
+          "id": "BfqWh542P4Ka0KAG",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "=site:linkedin.com {{ $json.output.agency_name }} {{ $json.output.recommended_job_title }}",
+        "options": {
+          "topic": "general",
+          "search_depth": "advanced",
+          "max_results": 5,
+          "include_answer": "basic",
+          "include_raw_content": false
+        }
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        16
+      ],
+      "id": "544fff9f-a273-4684-8a84-afb2baa99add",
+      "name": "🔎 Search Owner LinkedIn",
+      "credentials": {
+        "tavilyApi": {
+          "id": "BfqWh542P4Ka0KAG",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -240,
+        -80
+      ],
+      "id": "74313098-7348-47f7-b123-ac3c913c8ff8",
+      "name": "🔗 Merge Search Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst results = allItems.map(item => item.json);\nreturn [{ json: { total_results: results.length, tavily_results: results } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -80
+      ],
+      "id": "28919a66-e976-4773-8642-e5cdc9c0868c",
+      "name": "⚙️ Group Results by Agency"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<agent>\n<role>Expert Lead Finder for Real Estate Agency Outreach</role>\n<objective>From the search results, identify the single best decision maker to pitch AI automation to — prioritizing Broker/Owner, then Team Lead/Managing Broker, then Operations Manager, then Marketing Manager.</objective>\n<search_results>{{ JSON.stringify($json.tavily_results) }}</search_results>\n<instructions>\n<instruction>Never invent names, titles, or LinkedIn URLs. Return \"Unknown\" if not found.</instruction>\n<instruction>Prefer Owner/Broker/Founder over any other title.</instruction>\n<instruction>Reject Agents, Assistants, Interns, and non-decision-making roles.</instruction>\n<instruction>Return a LinkedIn URL only if explicitly found in the search results.</instruction>\n<instruction>Give a confidence_score 0-100 based on source reliability.</instruction>\n<instruction>Return ONLY valid JSON.</instruction>\n</instructions>\n</agent>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        -80
+      ],
+      "id": "0d357b6e-7bb7-4cc7-b03b-5dcadd040988",
+      "name": "🕵️ Contact Finder Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        144
+      ],
+      "id": "1093454f-f2e1-4997-83c4-cec7b5528dd2",
+      "name": "🧠 Contact Finder Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SgnIooPwKgcp8TUI",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"agency_name\": \"Prime Realty Group\",\n  \"full_name\": \"Ahmed Raza\",\n  \"job_title\": \"Broker/Owner\",\n  \"linkedin_url\": \"Unknown\",\n  \"location\": \"Lahore, Pakistan\",\n  \"confidence_score\": 78,\n  \"lead_found\": true\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        144
+      ],
+      "id": "9009967c-6eae-4661-8af0-e7e4390c4ce5",
+      "name": "📄 Contact Finder Output"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<agent>\n<role>Expert B2B Outreach Strategist for AI Automation services sold to Real Estate Agencies</role>\n<objective>Build a complete outreach strategy tailored to this agency's pain points and growth signals.</objective>\n<input>\n<agency_name>{{ $('🏢 Agency Intelligence Agent').item.json.output.agency_name }}</agency_name>\n<agency_size>{{ $('🏢 Agency Intelligence Agent').item.json.output.agency_size }}</agency_size>\n<pain_points>{{ JSON.stringify($('🏢 Agency Intelligence Agent').item.json.output.key_pain_points) }}</pain_points>\n<growth_signal>{{ $('🏢 Agency Intelligence Agent').item.json.output.recent_growth_signal }}</growth_signal>\n<automation_opportunity>{{ $('🎯 ICP Qualification Agent').item.json.output.automation_opportunity }}</automation_opportunity>\n</input>\n<instructions>\n<instruction>Identify the top pain point most worth leading with (usually slow lead response or no CRM).</instruction>\n<instruction>Create a hook referencing their growth signal or lead volume.</instruction>\n<instruction>Create a personalization line that sounds specific to this agency, not generic.</instruction>\n<instruction>Explain the business impact of solving the pain point (faster response = more closed deals).</instruction>\n<instruction>Create a value proposition around AI WhatsApp response, CRM automation, or showing scheduling.</instruction>\n<instruction>Generate a low-friction CTA (15-min call).</instruction>\n<instruction>Return ONLY valid JSON.</instruction>\n</instructions>\n</agent>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        560,
+        -80
+      ],
+      "id": "7a84ed81-3079-4b6f-b6a0-a4dcab9f9eaa",
+      "name": "📊 Outreach Strategy Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        144
+      ],
+      "id": "7623d405-ad7e-478c-b1ec-144adf703a68",
+      "name": "🧠 Outreach Strategy Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SgnIooPwKgcp8TUI",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"agency_name\": \"Prime Realty Group\",\n  \"top_pain_point\": \"Leads sit unanswered on WhatsApp for hours\",\n  \"hook\": \"Opening a second branch in Bahria Town while managing lead follow-up over WhatsApp manually.\",\n  \"personalization_line\": \"Saw Prime Realty Group just expanded into Bahria Town \\u2014 congrats on the growth.\",\n  \"business_impact\": \"Cutting response time from hours to seconds typically increases closed deals by capturing leads before competitors do.\",\n  \"value_proposition\": \"AI-powered WhatsApp response and CRM automation that instantly replies to every inbound lead and books showings automatically.\",\n  \"cta_angle\": \"Worth a quick 15-minute call to see if this fits your team?\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        144
+      ],
+      "id": "94a1207f-781f-4a35-a56c-efa51d784a06",
+      "name": "📄 Outreach Strategy Output"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<agent>\n<role>Expert Cold Email Copywriter for Real Estate Agency Outreach</role>\n<objective>Write a concise, human, personalized cold email pitching AI automation to this real estate agency.</objective>\n<personalization_data>{{ JSON.stringify($('📊 Outreach Strategy Agent').item.json.output) }}</personalization_data>\n<instructions>\n<instruction>Use the hook naturally in the opening line.</instruction>\n<instruction>Reference the top pain point and business impact.</instruction>\n<instruction>Present the value proposition clearly, mentioning WhatsApp/CRM automation specifically.</instruction>\n<instruction>End with the low-friction CTA.</instruction>\n<instruction>Keep the email between 80-150 words, no buzzwords, sound human.</instruction>\n<instruction>Return JSON only.</instruction>\n</instructions>\n<output_format>{\"agency_name\": \"\", \"subject_line\": \"\", \"email_body\": \"\"}</output_format>\n</agent>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        912,
+        -80
+      ],
+      "id": "6582925c-d08b-4cfd-9f49-1ed284358ee5",
+      "name": "✉️ Email Generator Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        928,
+        144
+      ],
+      "id": "5f7aebf1-314d-46cd-b906-f68e4f22a6ca",
+      "name": "🧠 Email Generator Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SgnIooPwKgcp8TUI",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"agency_name\": \"Prime Realty Group\",\n  \"subject_line\": \"Cutting WhatsApp response time for Prime Realty Group\",\n  \"email_body\": \"Hi Ahmed,\\n\\nSaw Prime Realty Group just opened a second branch in Bahria Town \\u2014 great momentum.\\n\\nWith growth like that, I imagine WhatsApp inquiries are piling up faster than your team can reply to them.\\n\\nWe help real estate agencies auto-respond to every WhatsApp lead instantly, match them to listings, and book showings automatically \\u2014 so no lead sits unanswered.\\n\\nWorth a quick 15-minute call this week to see if it fits your team?\\n\\nBest regards\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1056,
+        144
+      ],
+      "id": "9e411b34-d36b-4e45-87d4-66f0363470a4",
+      "name": "📄 Generated Email Output"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.output.subject_line }}",
+        "message": "={{ $json.output.email_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        -80
+      ],
+      "id": "aa94b639-d00d-412e-9bec-330ebc890035",
+      "name": "📧 Create Gmail Draft",
+      "webhookId": "53677f65-21b8-4b3f-80c4-d9829972e098",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bX40YF8GpJeuG3B4",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc",
+          "mode": "list",
+          "cachedResultName": "b2b",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 461540058,
+          "mode": "list",
+          "cachedResultName": "Agency Prospects",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YWW_3RWBpvqz2qrrPR3tupq6i8wYKTt5R9Iam1ipDmc/edit#gid=461540058"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Agency": "={{ $('📋 Fetch Agency Prospects').item.json.Agency }}",
+            "Status": "Email Drafted",
+            "ICP Score": "={{ $('🎯 ICP Qualification Agent').item.json.output.overall_score }}",
+            "Subject Line": "={{ $('✉️ Email Generator Agent').item.json.output.subject_line }}",
+            "Processed Date": "={{ $('🕐 Set Processed Timestamp').item.json.Date }}"
+          },
+          "matchingColumns": [
+            "Agency"
+          ],
+          "schema": [
+            {
+              "id": "Agency",
+              "displayName": "Agency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ICP Score",
+              "displayName": "ICP Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rejection Reason",
+              "displayName": "Rejection Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subject Line",
+              "displayName": "Subject Line",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1280,
+        288
+      ],
+      "id": "4faadaa5-b1c6-4905-ac7d-ff10848773d6",
+      "name": "✅ Mark Prospect as Contacted",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "I7jbU0xJ7UcT8z0q",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🚀 Start Agency Outreach": {
+      "main": [
+        [
+          {
+            "node": "📋 Fetch Agency Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Fetch Agency Prospects": {
+      "main": [
+        [
+          {
+            "node": "🕐 Set Processed Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕐 Set Processed Timestamp": {
+      "main": [
+        [
+          {
+            "node": "🔍 Is Prospect Status Pending?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Is Prospect Status Pending?": {
+      "main": [
+        [
+          {
+            "node": "🌐 Search Agency Info (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Search Agency Info (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "🏢 Agency Intelligence Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏢 Agency Intelligence Agent": {
+      "main": [
+        [
+          {
+            "node": "🎯 ICP Qualification Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Agency Research Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🏢 Agency Intelligence Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Agency Research Data": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "🏢 Agency Intelligence Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 ICP Qualification Agent": {
+      "main": [
+        [
+          {
+            "node": "🔀 Qualified Agency Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 ICP Scoring Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🎯 ICP Qualification Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 ICP Score": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "🎯 ICP Qualification Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Qualified Agency Router": {
+      "main": [
+        [
+          {
+            "node": "🔎 Search Agency Leadership",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔎 Search Owner LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Mark Prospect as Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔎 Search Agency Leadership": {
+      "main": [
+        [
+          {
+            "node": "🔗 Merge Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔎 Search Owner LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "🔗 Merge Search Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔗 Merge Search Results": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Group Results by Agency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Group Results by Agency": {
+      "main": [
+        [
+          {
+            "node": "🕵️ Contact Finder Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕵️ Contact Finder Agent": {
+      "main": [
+        [
+          {
+            "node": "📊 Outreach Strategy Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Contact Finder Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🕵️ Contact Finder Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Contact Finder Output": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "🕵️ Contact Finder Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Outreach Strategy Agent": {
+      "main": [
+        [
+          {
+            "node": "✉️ Email Generator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Outreach Strategy Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "📊 Outreach Strategy Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Outreach Strategy Output": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "📊 Outreach Strategy Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✉️ Email Generator Agent": {
+      "main": [
+        [
+          {
+            "node": "📧 Create Gmail Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Email Generator Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "✉️ Email Generator Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Generated Email Output": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "✉️ Email Generator Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Create Gmail Draft": {
+      "main": [
+        [
+          {
+            "node": "✅ Mark Prospect as Contacted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "97a2d02d-692d-4c8a-98ad-ab06568ad40b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "73e913e778e967c4ba75f1438fff7b79cc1b160e01783896650e28a769005db4"
+  },
+  "nodeGroups": [],
+  "id": "MfzB698iVWGSmTsx",
+  "tags": []
+}

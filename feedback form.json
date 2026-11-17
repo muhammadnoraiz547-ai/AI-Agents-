@@ -1,0 +1,542 @@
+{
+  "name": "feedback form",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "customer feedback",
+        "formDescription": "user feedback form",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full name",
+              "placeholder": "enter ur fullname here"
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "placeholder": "enter your email here"
+            },
+            {
+              "fieldLabel": "contact info",
+              "fieldType": "number",
+              "placeholder": "enter your contact info"
+            },
+            {
+              "fieldLabel": "Feedback",
+              "placeholder": "enter your feedback here"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -528,
+        -176
+      ],
+      "id": "e03248da-e7f5-4897-a0e8-262094d51900",
+      "name": "On form submission",
+      "webhookId": "b0ed1123-0592-4df8-9eda-bd15be8dfedd"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=feedback is:  {{ $json.Feedback }}\nit will be from one of these;\ncomplain\ncompliment\nfeature added request",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -304,
+        -48
+      ],
+      "id": "d1a4b703-8e72-4888-bb6b-ec0437720fa6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        176
+      ],
+      "id": "87fc57de-e217-46fc-a72c-77e0e8576b61",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2IbqqmZSJHU8C9Xk",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        48,
+        -176
+      ],
+      "id": "01767e18-0d9a-4293-bf01-6e89bc40d31d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "compalin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c70f4ead-769d-45c5-b024-0f04d8c4b306"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "81910f6e-3a8c-4593-bb22-7cc7ca3c3443",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "compliment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bbba537c-d497-472d-8265-9bc68625f493",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "feature request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        -192
+      ],
+      "id": "3886a176-249b-4c1f-b23e-ff85cb669772",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appuB3a5NxEccHeCP",
+          "mode": "list",
+          "cachedResultName": "customer feedback",
+          "cachedResultUrl": "https://airtable.com/appuB3a5NxEccHeCP"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblv8qleEttfwWaJw",
+          "mode": "list",
+          "cachedResultName": "compliment",
+          "cachedResultUrl": "https://airtable.com/appuB3a5NxEccHeCP/tblv8qleEttfwWaJw"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Full Name": "={{ $('Merge').item.json['Full name'] }}",
+            "Email": "={{ $('Merge').item.json.Email }}",
+            "contact info": "={{ $('Merge').item.json['contact info'] }}",
+            "Feedback": "={{ $('Merge').item.json.Feedback }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contact info",
+              "displayName": "contact info",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Feedback",
+              "displayName": "Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        -304
+      ],
+      "id": "f9f4d910-5233-4bc9-b69e-ef5bb64e859c",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "laynsL1WXlxYo3zg",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appuB3a5NxEccHeCP",
+          "mode": "list",
+          "cachedResultName": "customer feedback",
+          "cachedResultUrl": "https://airtable.com/appuB3a5NxEccHeCP"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblFJcwt8twmcZAuu",
+          "mode": "list",
+          "cachedResultName": "feature request",
+          "cachedResultUrl": "https://airtable.com/appuB3a5NxEccHeCP/tblFJcwt8twmcZAuu"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Full Name": "={{ $('Merge').item.json['Full name'] }}",
+            "Email": "={{ $('Merge').item.json.Email }}",
+            "contact info": "={{ $('Merge').item.json['contact info'] }}",
+            "Feedback": "={{ $('Merge').item.json.Feedback }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contact info",
+              "displayName": "contact info",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Feedback",
+              "displayName": "Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        -96
+      ],
+      "id": "af727689-afeb-427d-a2bd-8fd4850589a9",
+      "name": "Create a record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "laynsL1WXlxYo3zg",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appuB3a5NxEccHeCP",
+          "mode": "list",
+          "cachedResultName": "customer feedback",
+          "cachedResultUrl": "https://airtable.com/appuB3a5NxEccHeCP"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblr6WnmiAC6GVobC",
+          "mode": "list",
+          "cachedResultName": "complain",
+          "cachedResultUrl": "https://airtable.com/appuB3a5NxEccHeCP/tblr6WnmiAC6GVobC"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Full Name": "={{ $('Merge').item.json['Full name'] }}",
+            "Email": "={{ $('Merge').item.json.Email }}",
+            "contact info": "={{ $('Merge').item.json['contact info'] }}",
+            "Feedback": "={{ $('Merge').item.json.Feedback }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contact info",
+              "displayName": "contact info",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Feedback",
+              "displayName": "Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        112
+      ],
+      "id": "c13c21ca-46b4-48a9-8080-a90a77b68c5f",
+      "name": "Create a record2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "laynsL1WXlxYo3zg",
+          "name": "Airtable Personal Access Token account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a record1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a record2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "cd9c2640-dabf-46fa-a6b4-35c362122f25",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a3317da8a4a44dd9aee1acf069470ada45fe0882d5cef27cdc7ccda458f63b7f"
+  },
+  "id": "IHz1vTILVis3p0n6qI-29",
+  "tags": []
+}
